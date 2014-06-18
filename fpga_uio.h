@@ -58,4 +58,4 @@ ingot_t* FPGA_UIO_get_reg();
 /** @} */
 
 #endif /* _FPGA_UIO_H  */
-_UIO_reset_fpga(void)
+

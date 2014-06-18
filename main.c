@@ -9,6 +9,8 @@ int main()
 
     FPGA_UIO_reset();
 
+    DUMP_STRUCT(FPGA_UIO_get_reg());
+
     FPGA_UIO_exit();
     return 0;
 }
