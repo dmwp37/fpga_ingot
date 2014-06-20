@@ -122,39 +122,41 @@ typedef volatile u_int64_t ingot_regLB;
     #define   INGOT_REGLB_BUF_NUM_LSB 0
     #define   INGOT_REGLB_BUF_NUM_FWIDTH 8
 
-typedef struct ingot_s {
-    ingot_regid device_id;		/* 0x0 */
-    ingot_regvn version;		/* 0x8 */
-    ingot_reg64 revision_tag1;		/* 0x10 */
-    ingot_reg64 revision_tag2;		/* 0x18 */
-    ingot_reg64 dma_rd_host_addr;		/* 0x20 */
-    ingot_regLA dma_rd_local;		/* 0x28 */
-    ingot_regQL dma_rd_level;		/* 0x30 */
-    ingot_reg64 dma_rd_loopcount;		/* 0x38 */
-    ingot_reg64 dma_wr_host_addr;		/* 0x40 */
-    ingot_regLA dma_wr_local;		/* 0x48 */
-    ingot_regQL dma_wr_level;		/* 0x50 */
-    ingot_reg64 dma_wr_loopcount;		/* 0x58 */
-    ingot_regLA dma_rw_start;		/* 0x60 */
-    unsigned char    FILLER_0x68[0x8];
-    ingot_reg64 dma_timer;		/* 0x70 */
-    ingot_reg64 dma_gapcnt;		/* 0x78 */
-    ingot_reg64 led;		/* 0x80 */
-    ingot_regWR warm_reset;		/* 0x88 */
-    unsigned char    FILLER_0x88[0x70];
-    ingot_reg64 dma_buf_offset;		/* 0x100 */
-    unsigned char    FILLER_0x108[0xf8];
-    ingot_regAD fab_write;		/* 0x200 */
-    ingot_regAD fab_read;		/* 0x208 */
-    unsigned char    FILLER_0x210[0xf0];
-    ingot_reg64 rx_buf_base;		/* 0x300 */
-    ingot_reg64 rx_desc_base;		/* 0x308 */
-    ingot_reg64 tx_buf_base;		/* 0x310 */
-    ingot_reg64 tx_desc_base;		/* 0x318 */
-    ingot_regLB tx_packet;		/* 0x320 */
-    ingot_regLB rx_packet;		/* 0x328 */
-    unsigned char    FILLER_0x330[0xcd0];
+typedef struct ingot_s
+{
+    ingot_regid   device_id;              /* 0x0   */
+    ingot_regvn   version;                /* 0x8   */
+    ingot_reg64   revision_tag1;          /* 0x10  */
+    ingot_reg64   revision_tag2;          /* 0x18  */
+    ingot_reg64   dma_rd_host_addr;       /* 0x20  */
+    ingot_regLA   dma_rd_local;           /* 0x28  */
+    ingot_regQL   dma_rd_level;           /* 0x30  */
+    ingot_reg64   dma_rd_loopcount;       /* 0x38  */
+    ingot_reg64   dma_wr_host_addr;       /* 0x40  */
+    ingot_regLA   dma_wr_local;           /* 0x48  */
+    ingot_regQL   dma_wr_level;           /* 0x50  */
+    ingot_reg64   dma_wr_loopcount;       /* 0x58  */
+    ingot_regLA   dma_rw_start;           /* 0x60  */
+    unsigned char FILLER_0x68[0x8];
+    ingot_reg64   dma_timer;              /* 0x70  */
+    ingot_reg64   dma_gapcnt;             /* 0x78  */
+    ingot_reg64   led;                    /* 0x80  */
+    ingot_regWR   warm_reset;             /* 0x88  */
+    unsigned char FILLER_0x88[0x70];
+    ingot_reg64   dma_buf_offset;         /* 0x100 */
+    unsigned char FILLER_0x108[0xf8];
+    ingot_regAD   fab_write;              /* 0x200 */
+    ingot_regAD   fab_read;               /* 0x208 */
+    unsigned char FILLER_0x210[0xf0];
+    ingot_reg64   rx_buf_base;            /* 0x300 */
+    ingot_reg64   rx_desc_base;           /* 0x308 */
+    ingot_reg64   tx_buf_base;            /* 0x310 */
+    ingot_reg64   tx_desc_base;           /* 0x318 */
+    ingot_regLB   tx_packet;              /* 0x320 */
+    ingot_regLB   rx_packet;              /* 0x328 */
+    unsigned char FILLER_0x330[0xcd0];
 } ingot_t;
 
 #pragma pack()
 #endif /*__INGOT_H__*/
+
