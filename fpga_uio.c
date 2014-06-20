@@ -161,6 +161,7 @@ void FPGA_UIO_exit()
 *//*==============================================================================================*/
 ingot_t* FPGA_UIO_get_reg()
 {
+    fpga_uio_check();
     return fpga_uio.base;
 }
 
