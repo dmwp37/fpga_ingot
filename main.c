@@ -14,7 +14,7 @@ int main()
 
     FPGA_DRV_reset();
 
-    printf("FPGA ingot version is: 0x%Lx\n", FPGA_DRV_get_version());
+    printf("FPGA ingot version is: 0x%" PRIx64 "\n", FPGA_DRV_get_version());
 
     FPGA_UIO_exit();
 

@@ -12,11 +12,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "fpga_uio.h"
+#include "fpga_drv.h"
 #include "jspec/mmap.h"
 #include "jspec/ingot.h"
 #include "jspec/fabric_defines.h"
-#include "fpga_uio.h"
-#include "fpga_drv.h"
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
