@@ -320,7 +320,7 @@ void dbg_dump(const char* name)
 
     while (flag)
     {
-	    /* trap here */
+        /* trap here */
     }
 
     if (get_type_name(p_fp->read_fp, buf) < 0)

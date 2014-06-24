@@ -45,10 +45,8 @@ typedef struct
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
 static int  uio_get_mem_size(const char* uio, int map_num);
-static BOOL is_expected_uio(const char* name, const char* driver);
-static BOOL uio_find(const char* driver, char* uio_name);
-
-static inline void fpga_uio_check();
+static bool is_expected_uio(const char* name, const char* driver);
+static bool uio_find(const char* driver, char* uio_name);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
@@ -70,8 +68,9 @@ static FPGA_UIO_T fpga_uio =
 /*=============================================================================================*//**
 @brief Init FPGA UIO
 
+@return true for success
 *//*==============================================================================================*/
-BOOL FPGA_UIO_init()
+bool FPGA_UIO_init()
 {
     char  fpga_dev[128];
     int   fpga_fd;
@@ -82,13 +81,13 @@ BOOL FPGA_UIO_init()
     if (fpga_uio.base != NULL)
     {
         /* already opened */
-        return TRUE;
+        return true;
     }
 
     if (!uio_find(FPGA_INGOT_DRIVER, fpga_uio.name))
     {
         printf("error: Can't find FPGA device\n");
-        return FALSE;
+        return false;
     }
 
     snprintf(fpga_dev, sizeof(fpga_dev), "/dev/%s", fpga_uio.name);
@@ -96,7 +95,7 @@ BOOL FPGA_UIO_init()
     if ((fpga_fd = open(fpga_dev, O_RDWR | O_SYNC)) < 0)
     {
         printf("error: Failed to open FPGA device %s. errno=%d(%m)\n", fpga_dev, errno);
-        return FALSE;
+        return false;
     }
     else
     {
@@ -124,7 +123,7 @@ BOOL FPGA_UIO_init()
         fpga_uio.base = fpga_base;
     }
 
-    return TRUE;
+    return true;
 
 init_err:
     if (fpga_uio.fd > 0)
@@ -132,7 +131,7 @@ init_err:
         close(fpga_uio.fd);
         fpga_uio.fd = -1;
     }
-    return FALSE;
+    return false;
 }
 
 /*=============================================================================================*//**
@@ -159,39 +158,14 @@ void FPGA_UIO_exit()
 @brief Get the FPGA register
 
 *//*==============================================================================================*/
-ingot_t* FPGA_UIO_get_reg()
+void* FPGA_UIO_get_base()
 {
-    fpga_uio_check();
     return fpga_uio.base;
-}
-
-/*=============================================================================================*//**
-@brief Reset the FPGA
-
-*//*==============================================================================================*/
-void FPGA_UIO_reset(void)
-{
-    ingot_t* ingot_reg = (ingot_t*)fpga_uio.base;
-
-    fpga_uio_check();
-
-    ingot_reg->warm_reset = 0xbaad;
-
-    printf("reset FPGA\n");
-    usleep(10000);
 }
 
 /*==================================================================================================
                                           LOCAL FUNCTIONS
 ==================================================================================================*/
-void fpga_uio_check()
-{
-    if (fpga_uio.base == NULL)
-    {
-        printf("error: fpga uio not init!\n");
-        exit(1);
-    }
-}
 
 /*=============================================================================================*//**
 @brief get the uio mmap size
@@ -240,9 +214,9 @@ int uio_get_mem_size(const char* uio, int map_num)
 @return TURE if successfully find the uio driver
 
 *//*==============================================================================================*/
-BOOL uio_find(const char* driver, char* uio_name)
+bool uio_find(const char* driver, char* uio_name)
 {
-    BOOL            is_find = FALSE;
+    bool            is_find = false;
     int             n;
     struct dirent** namelist = NULL;
 
@@ -267,7 +241,7 @@ BOOL uio_find(const char* driver, char* uio_name)
             {
                 strcpy(uio_name, namelist[i]->d_name);
                 printf("uio_name is '%s' for driver '%s'\n", uio_name, driver);
-                is_find = TRUE;
+                is_find = true;
             }
 
             free(namelist[i]);
@@ -287,9 +261,9 @@ BOOL uio_find(const char* driver, char* uio_name)
 @return TRUE if the uio is expected, otherwise return FALSE
 
 *//*==============================================================================================*/
-BOOL is_expected_uio(const char* name, const char* driver)
+bool is_expected_uio(const char* name, const char* driver)
 {
-    BOOL  ret = FALSE;
+    bool  ret = false;
     char  filename[128];
     FILE* fp = NULL;
 
@@ -310,7 +284,7 @@ BOOL is_expected_uio(const char* name, const char* driver)
             if (strstr(line, driver) != NULL)
             {
                 printf("/sys/class/uio/%s is expected for %s\n", name, driver);
-                ret = TRUE;
+                ret = true;
             }
         }
 

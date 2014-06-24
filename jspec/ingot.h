@@ -19,16 +19,15 @@
 #ifndef __INGOT_H__
 #define __INGOT_H__
 
-#include <sys/types.h>
 #pragma pack(1)
 
-typedef volatile u_int64_t ingot_regid;
-    #define   INGOT_REGID_RESERVED_SET(CUR, NEWVAL) (((((u_int64_t)(NEWVAL)) << 8) & 0xffffffffffffff00ULL) | ((CUR) & ~0xffffffffffffff00ULL))
+typedef volatile uint64_t ingot_regid;
+    #define   INGOT_REGID_RESERVED_SET(CUR, NEWVAL) (((((uint64_t)(NEWVAL)) << 8) & 0xffffffffffffff00ULL) | ((CUR) & ~0xffffffffffffff00ULL))
     #define   INGOT_REGID_RESERVED_GET(CUR) (((CUR) >> 8) & 0x00ffffffffffffffULL)
     #define   INGOT_REGID_RESERVED_MSB 63
     #define   INGOT_REGID_RESERVED_LSB 8
     #define   INGOT_REGID_RESERVED_FWIDTH 56
-    #define   INGOT_REGID_ID_SET(CUR, NEWVAL) ((((u_int64_t)(NEWVAL)) & 0x00000000000000ffULL) | ((CUR) & ~0x00000000000000ffULL))
+    #define   INGOT_REGID_ID_SET(CUR, NEWVAL) ((((uint64_t)(NEWVAL)) & 0x00000000000000ffULL) | ((CUR) & ~0x00000000000000ffULL))
     #define   INGOT_REGID_ID_GET(CUR) ((CUR) & 0x00000000000000ffULL)
         #define   INGOT_REGID_ID_INGOT 0x1
         #define   INGOT_REGID_ID_DEVBOARD 0x2
@@ -38,55 +37,55 @@ typedef volatile u_int64_t ingot_regid;
     #define   INGOT_REGID_ID_LSB 0
     #define   INGOT_REGID_ID_FWIDTH 8
 
-typedef volatile u_int64_t ingot_regvn;
-    #define   INGOT_REGVN_BUILD_ID_SET(CUR, NEWVAL) (((((u_int64_t)(NEWVAL)) << 32) & 0xffffffff00000000ULL) | ((CUR) & ~0xffffffff00000000ULL))
+typedef volatile uint64_t ingot_regvn;
+    #define   INGOT_REGVN_BUILD_ID_SET(CUR, NEWVAL) (((((uint64_t)(NEWVAL)) << 32) & 0xffffffff00000000ULL) | ((CUR) & ~0xffffffff00000000ULL))
     #define   INGOT_REGVN_BUILD_ID_GET(CUR) (((CUR) >> 32) & 0x00000000ffffffffULL)
     #define   INGOT_REGVN_BUILD_ID_MSB 63
     #define   INGOT_REGVN_BUILD_ID_LSB 32
     #define   INGOT_REGVN_BUILD_ID_FWIDTH 32
-    #define   INGOT_REGVN_MAJOR_SET(CUR, NEWVAL) (((((u_int64_t)(NEWVAL)) << 16) & 0x00000000ffff0000ULL) | ((CUR) & ~0x00000000ffff0000ULL))
+    #define   INGOT_REGVN_MAJOR_SET(CUR, NEWVAL) (((((uint64_t)(NEWVAL)) << 16) & 0x00000000ffff0000ULL) | ((CUR) & ~0x00000000ffff0000ULL))
     #define   INGOT_REGVN_MAJOR_GET(CUR) (((CUR) >> 16) & 0x000000000000ffffULL)
     #define   INGOT_REGVN_MAJOR_MSB 31
     #define   INGOT_REGVN_MAJOR_LSB 16
     #define   INGOT_REGVN_MAJOR_FWIDTH 16
-    #define   INGOT_REGVN_MINOR_SET(CUR, NEWVAL) ((((u_int64_t)(NEWVAL)) & 0x000000000000ffffULL) | ((CUR) & ~0x000000000000ffffULL))
+    #define   INGOT_REGVN_MINOR_SET(CUR, NEWVAL) ((((uint64_t)(NEWVAL)) & 0x000000000000ffffULL) | ((CUR) & ~0x000000000000ffffULL))
     #define   INGOT_REGVN_MINOR_GET(CUR) ((CUR) & 0x000000000000ffffULL)
     #define   INGOT_REGVN_MINOR_MSB 15
     #define   INGOT_REGVN_MINOR_LSB 0
     #define   INGOT_REGVN_MINOR_FWIDTH 16
 
-typedef volatile u_int64_t ingot_reg64;
-    #define   INGOT_REG64_VALUE_SET(CUR, NEWVAL) ((u_int64_t)(NEWVAL))
+typedef volatile uint64_t ingot_reg64;
+    #define   INGOT_REG64_VALUE_SET(CUR, NEWVAL) ((uint64_t)(NEWVAL))
     #define   INGOT_REG64_VALUE_GET(CUR) (CUR)
     #define   INGOT_REG64_VALUE_MSB 63
     #define   INGOT_REG64_VALUE_LSB 0
     #define   INGOT_REG64_VALUE_FWIDTH 64
 
-typedef volatile u_int64_t ingot_regLA;
-    #define   INGOT_REGLA_LENGTH_SET(CUR, NEWVAL) (((((u_int64_t)(NEWVAL)) << 32) & 0xffffffff00000000ULL) | ((CUR) & ~0xffffffff00000000ULL))
+typedef volatile uint64_t ingot_regLA;
+    #define   INGOT_REGLA_LENGTH_SET(CUR, NEWVAL) (((((uint64_t)(NEWVAL)) << 32) & 0xffffffff00000000ULL) | ((CUR) & ~0xffffffff00000000ULL))
     #define   INGOT_REGLA_LENGTH_GET(CUR) (((CUR) >> 32) & 0x00000000ffffffffULL)
     #define   INGOT_REGLA_LENGTH_MSB 63
     #define   INGOT_REGLA_LENGTH_LSB 32
     #define   INGOT_REGLA_LENGTH_FWIDTH 32
-    #define   INGOT_REGLA_ADDRESS_SET(CUR, NEWVAL) ((((u_int64_t)(NEWVAL)) & 0x00000000ffffffffULL) | ((CUR) & ~0x00000000ffffffffULL))
+    #define   INGOT_REGLA_ADDRESS_SET(CUR, NEWVAL) ((((uint64_t)(NEWVAL)) & 0x00000000ffffffffULL) | ((CUR) & ~0x00000000ffffffffULL))
     #define   INGOT_REGLA_ADDRESS_GET(CUR) ((CUR) & 0x00000000ffffffffULL)
     #define   INGOT_REGLA_ADDRESS_MSB 31
     #define   INGOT_REGLA_ADDRESS_LSB 0
     #define   INGOT_REGLA_ADDRESS_FWIDTH 32
-typedef volatile u_int64_t ingot_regQL;
-    #define   INGOT_REGQL_COMPLETION_SET(CUR, NEWVAL) (((((u_int64_t)(NEWVAL)) << 32) & 0xffffffff00000000ULL) | ((CUR) & ~0xffffffff00000000ULL))
+typedef volatile uint64_t ingot_regQL;
+    #define   INGOT_REGQL_COMPLETION_SET(CUR, NEWVAL) (((((uint64_t)(NEWVAL)) << 32) & 0xffffffff00000000ULL) | ((CUR) & ~0xffffffff00000000ULL))
     #define   INGOT_REGQL_COMPLETION_GET(CUR) (((CUR) >> 32) & 0x00000000ffffffffULL)
     #define   INGOT_REGQL_COMPLETION_MSB 63
     #define   INGOT_REGQL_COMPLETION_LSB 32
     #define   INGOT_REGQL_COMPLETION_FWIDTH 32
-    #define   INGOT_REGQL_REQUEST_SET(CUR, NEWVAL) ((((u_int64_t)(NEWVAL)) & 0x00000000ffffffffULL) | ((CUR) & ~0x00000000ffffffffULL))
+    #define   INGOT_REGQL_REQUEST_SET(CUR, NEWVAL) ((((uint64_t)(NEWVAL)) & 0x00000000ffffffffULL) | ((CUR) & ~0x00000000ffffffffULL))
     #define   INGOT_REGQL_REQUEST_GET(CUR) ((CUR) & 0x00000000ffffffffULL)
     #define   INGOT_REGQL_REQUEST_MSB 31
     #define   INGOT_REGQL_REQUEST_LSB 0
     #define   INGOT_REGQL_REQUEST_FWIDTH 32
 
-typedef volatile u_int64_t ingot_regWR;
-    #define   INGOT_REGWR_RESET_SET(CUR, NEWVAL) ((((u_int64_t)(NEWVAL)) & 0x000000000000ffffULL) | ((CUR) & ~0x000000000000ffffULL))
+typedef volatile uint64_t ingot_regWR;
+    #define   INGOT_REGWR_RESET_SET(CUR, NEWVAL) ((((uint64_t)(NEWVAL)) & 0x000000000000ffffULL) | ((CUR) & ~0x000000000000ffffULL))
     #define   INGOT_REGWR_RESET_GET(CUR) ((CUR) & 0x000000000000ffffULL)
         #define   INGOT_REGWR_RESET_IGNORE 0x0
         #define   INGOT_REGWR_RESET_CLEAR 0xbaad
@@ -94,29 +93,29 @@ typedef volatile u_int64_t ingot_regWR;
     #define   INGOT_REGWR_RESET_LSB 0
     #define   INGOT_REGWR_RESET_FWIDTH 16
 
-typedef volatile u_int64_t ingot_regAD;
-    #define   INGOT_REGAD_ADDRESS_SET(CUR, NEWVAL) (((((u_int64_t)(NEWVAL)) << 32) & 0xffffffff00000000ULL) | ((CUR) & ~0xffffffff00000000ULL))
+typedef volatile uint64_t ingot_regAD;
+    #define   INGOT_REGAD_ADDRESS_SET(CUR, NEWVAL) (((((uint64_t)(NEWVAL)) << 32) & 0xffffffff00000000ULL) | ((CUR) & ~0xffffffff00000000ULL))
     #define   INGOT_REGAD_ADDRESS_GET(CUR) (((CUR) >> 32) & 0x00000000ffffffffULL)
     #define   INGOT_REGAD_ADDRESS_MSB 63
     #define   INGOT_REGAD_ADDRESS_LSB 32
     #define   INGOT_REGAD_ADDRESS_FWIDTH 32
-    #define   INGOT_REGAD_DATA_SET(CUR, NEWVAL) ((((u_int64_t)(NEWVAL)) & 0x00000000ffffffffULL) | ((CUR) & ~0x00000000ffffffffULL))
+    #define   INGOT_REGAD_DATA_SET(CUR, NEWVAL) ((((uint64_t)(NEWVAL)) & 0x00000000ffffffffULL) | ((CUR) & ~0x00000000ffffffffULL))
     #define   INGOT_REGAD_DATA_GET(CUR) ((CUR) & 0x00000000ffffffffULL)
     #define   INGOT_REGAD_DATA_MSB 31
     #define   INGOT_REGAD_DATA_LSB 0
     #define   INGOT_REGAD_DATA_FWIDTH 32
-typedef volatile u_int64_t ingot_regLB;
-    #define   INGOT_REGLB_LENGTH_SET(CUR, NEWVAL) (((((u_int64_t)(NEWVAL)) << 48) & 0xffff000000000000ULL) | ((CUR) & ~0xffff000000000000ULL))
+typedef volatile uint64_t ingot_regLB;
+    #define   INGOT_REGLB_LENGTH_SET(CUR, NEWVAL) (((((uint64_t)(NEWVAL)) << 48) & 0xffff000000000000ULL) | ((CUR) & ~0xffff000000000000ULL))
     #define   INGOT_REGLB_LENGTH_GET(CUR) (((CUR) >> 48) & 0x000000000000ffffULL)
     #define   INGOT_REGLB_LENGTH_MSB 63
     #define   INGOT_REGLB_LENGTH_LSB 48
     #define   INGOT_REGLB_LENGTH_FWIDTH 16
-    #define   INGOT_REGLB_QUEUE_SET(CUR, NEWVAL) (((((u_int64_t)(NEWVAL)) << 40) & 0x0000ff0000000000ULL) | ((CUR) & ~0x0000ff0000000000ULL))
+    #define   INGOT_REGLB_QUEUE_SET(CUR, NEWVAL) (((((uint64_t)(NEWVAL)) << 40) & 0x0000ff0000000000ULL) | ((CUR) & ~0x0000ff0000000000ULL))
     #define   INGOT_REGLB_QUEUE_GET(CUR) (((CUR) >> 40) & 0x00000000000000ffULL)
     #define   INGOT_REGLB_QUEUE_MSB 47
     #define   INGOT_REGLB_QUEUE_LSB 40
     #define   INGOT_REGLB_QUEUE_FWIDTH 8
-    #define   INGOT_REGLB_BUF_NUM_SET(CUR, NEWVAL) ((((u_int64_t)(NEWVAL)) & 0x00000000000000ffULL) | ((CUR) & ~0x00000000000000ffULL))
+    #define   INGOT_REGLB_BUF_NUM_SET(CUR, NEWVAL) ((((uint64_t)(NEWVAL)) & 0x00000000000000ffULL) | ((CUR) & ~0x00000000000000ffULL))
     #define   INGOT_REGLB_BUF_NUM_GET(CUR) ((CUR) & 0x00000000000000ffULL)
     #define   INGOT_REGLB_BUF_NUM_MSB 7
     #define   INGOT_REGLB_BUF_NUM_LSB 0

@@ -1,17 +1,17 @@
-#ifndef _FPGA_UIO_H
-#define _FPGA_UIO_H
+#ifndef _FPGA_DRV_H
+#define _FPGA_DRV_H
 /*==================================================================================================
 
-    Module Name:  fpga_uio.h
+    Module Name:  fpga_drv.h
 
-    General Description: This file provides driver interface for FPGA uio
+    General Description: This file provides driver interface for FPGA ingot driver
 
 ====================================================================================================
 
 ====================================================================================================
                                            INCLUDE FILES
 ==================================================================================================*/
-#include <stdbool.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,9 +36,11 @@ extern "C" {
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-bool  FPGA_UIO_init();
-void  FPGA_UIO_exit();
-void* FPGA_UIO_get_base();
+void     FPGA_DRV_reset(void);
+uint64_t FPGA_DRV_get_version();
+
+uint64_t ingot_fabric_read(uint32_t nid, uint32_t cntl, uint32_t upper_32_bits);
+void     ingot_fabric_write(uint32_t nid, uint32_t cntl, uint32_t data);
 
 #ifdef __cplusplus
 }
@@ -47,5 +49,5 @@ void* FPGA_UIO_get_base();
 /** @} */
 /** @} */
 
-#endif /* _FPGA_UIO_H  */
+#endif /* _FPGA_DRV_H  */
 
