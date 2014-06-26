@@ -5,6 +5,7 @@
 #include "uio.h"
 #include "fpga_drv.h"
 #include "hp_malloc.h"
+#include "rte/rte_ring.h"
 
 void test_hp_malloc()
 {
@@ -23,7 +24,7 @@ void test_hp_malloc()
 
 void test_fpga_uio()
 {
-    if (!fpga_drv_init())
+    if (fpga_drv_init() < 0)
     {
         printf("error: fpga uio init failed\n");
         exit(1);

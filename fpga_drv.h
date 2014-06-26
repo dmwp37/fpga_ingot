@@ -12,7 +12,6 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include <inttypes.h>
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +28,11 @@ extern "C" {
 /*==================================================================================================
                                    STRUCTURES AND OTHER TYPEDEFS
 ==================================================================================================*/
+typedef struct
+{
+   void* buf; /* size is always 2k bytes */
+   uint64_t phys_addr;
+} mbuf_t;
 
 /*==================================================================================================
                                    GLOBAL VARIABLE DECLARATIONS
@@ -37,10 +41,19 @@ extern "C" {
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-bool     fpga_drv_init();
-void     fpga_drv_exit();
-void     fpga_drv_reset(void);
+int  fpga_drv_init();
+void fpga_drv_exit();
+
+void fpga_drv_reset(void);
+
 uint64_t fpga_drv_get_version();
+
+mbuf_t* fpga_drv_mbuf_alloc();
+void    fpga_drv_mbuf_free(mbuf_t* mbuf);
+
+int fpga_drv_raw_send(mbuf_t* mbuf, size_t len);
+int fpga_drv_raw_recv(mbuf_t* mbuf);
+
 
 #ifdef __cplusplus
 }

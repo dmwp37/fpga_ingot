@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/queue.h>
 #include "uio.h"
 #include "fpga_drv.h"
 #include "jspec/mmap.h"
@@ -54,18 +55,19 @@ static ingot_t* ingot_reg    = NULL;
 /*=============================================================================================*//**
 @brief init the FPGA driver
 
+@return -1 if error happened, 0 for success
 *//*==============================================================================================*/
-bool fpga_drv_init()
+int fpga_drv_init()
 {
     fpga_drv_uio = uio_init(FPGA_INGOT_DRIVER);
 
     if (fpga_drv_uio != NULL)
     {
         ingot_reg = (ingot_t*)fpga_drv_uio->base;
-        return true;
+        return 0;
     }
 
-    return false;
+    return -1;
 }
 
 /*=============================================================================================*//**
