@@ -69,7 +69,7 @@ uninstall:
 #
 $(TARGET): $(OBJ_DIR) $(OBJ_FILES)
 	@echo "generating $@ ..."
-	@$(CC) $(LD_FLAGS) -o $@ $(OBJ_FILES)
+	@$(CC) -o $@ $(OBJ_FILES) $(LD_FLAGS)
 
 #
 # Rules for compiling cpp code

@@ -75,7 +75,7 @@ hp_t* malloc_huge_pages(size_t size)
                      MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB, -1, 0);
     if (ptr == MAP_FAILED)
     {
-        printf("%s(): cannot mmap huge page: errno=%d(%m);\n", __func__, errno);
+        printf("%s(): cannot mmap huge page: errno=%d(%m)\n", __func__, errno);
         free(p_hp);
         p_hp = NULL;
     }
@@ -88,6 +88,12 @@ hp_t* malloc_huge_pages(size_t size)
     {
         p_hp->base = ptr;
         p_hp->size = real_size;
+        /* assert if physical address is aligned */
+        if ((p_hp->phys_addr & 0xFFF) != 0)
+        {
+            printf("%s(): physical address not aligned!\n", __func__);
+            exit(1);
+        }
     }
 
     return p_hp;
@@ -133,7 +139,7 @@ phys_addr_t mem_addr_virt2phy(const void* virtaddr)
     fd = open("/proc/self/pagemap", O_RDONLY);
     if (fd < 0)
     {
-        printf("%s(): cannot open /proc/self/pagemap: errno=%d(%m);\n", __func__, errno);
+        printf("%s(): cannot open /proc/self/pagemap: errno=%d(%m)\n", __func__, errno);
         return BAD_PHYS_ADDR;
     }
 
@@ -142,13 +148,13 @@ phys_addr_t mem_addr_virt2phy(const void* virtaddr)
     offset   = sizeof(uint64_t) * virt_pfn;
     if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
     {
-        printf("%s(): seek error in /proc/self/pagemap: errno=%d(%m);\n", __func__, errno);
+        printf("%s(): seek error in /proc/self/pagemap: errno=%d(%m)\n", __func__, errno);
         close(fd);
         return BAD_PHYS_ADDR;
     }
     if (read(fd, &page, sizeof(uint64_t)) < 0)
     {
-        printf("%s(): cannot read /proc/self/pagemap: errno=%d(%m);\n", __func__, errno);
+        printf("%s(): cannot read /proc/self/pagemap: errno=%d(%m)\n", __func__, errno);
         close(fd);
         return BAD_PHYS_ADDR;
     }
