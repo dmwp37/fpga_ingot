@@ -1,10 +1,10 @@
-#ifndef _FPGA_UIO_H
-#define _FPGA_UIO_H
+#ifndef _UIO_H
+#define _UIO_H
 /*==================================================================================================
 
-    Module Name:  fpga_uio.h
+    Module Name:  uio.h
 
-    General Description: This file provides driver interface for FPGA uio
+    General Description: This file provides driver interface for uio driver
 
 ====================================================================================================
 
@@ -28,6 +28,13 @@ extern "C" {
 /*==================================================================================================
                                    STRUCTURES AND OTHER TYPEDEFS
 ==================================================================================================*/
+typedef struct
+{
+    char  name[128]; /* uio0 */
+    int   fd;        /* the uio fd */
+    int   mmap_size; /* uio mmap size */
+    void* base;      /* uio mmap base */
+} uio_t;
 
 /*==================================================================================================
                                    GLOBAL VARIABLE DECLARATIONS
@@ -36,9 +43,8 @@ extern "C" {
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-bool  FPGA_UIO_init();
-void  FPGA_UIO_exit();
-void* FPGA_UIO_get_base();
+uio_t* uio_init(const char* driver_name);
+void   uio_exit(uio_t* uio);
 
 #ifdef __cplusplus
 }
@@ -47,5 +53,5 @@ void* FPGA_UIO_get_base();
 /** @} */
 /** @} */
 
-#endif /* _FPGA_UIO_H  */
+#endif /* _UIO_H  */
 

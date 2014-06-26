@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "fpga_uio.h"
+#include "uio.h"
 #include "fpga_drv.h"
 #include "jspec/mmap.h"
 #include "jspec/ingot.h"
@@ -25,6 +25,7 @@
 /*==================================================================================================
                                            LOCAL MACROS
 ==================================================================================================*/
+#define FPGA_INGOT_DRIVER "Ingot FPGA UIO"
 
 /*==================================================================================================
                             LOCAL TYPEDEFS (STRUCTURES, UNIONS, ENUMS)
@@ -33,6 +34,8 @@
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
+uint64_t ingot_fabric_read(uint32_t nid, uint32_t cntl, uint32_t upper_32_bits);
+void     ingot_fabric_write(uint32_t nid, uint32_t cntl, uint32_t data);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
@@ -41,18 +44,47 @@
 /*==================================================================================================
                                           LOCAL VARIABLES
 ==================================================================================================*/
+static uio_t*   fpga_drv_uio = NULL;
+static ingot_t* ingot_reg    = NULL;
 
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
 ==================================================================================================*/
+
+/*=============================================================================================*//**
+@brief init the FPGA driver
+
+*//*==============================================================================================*/
+bool fpga_drv_init()
+{
+    fpga_drv_uio = uio_init(FPGA_INGOT_DRIVER);
+
+    if (fpga_drv_uio != NULL)
+    {
+        ingot_reg = (ingot_t*)fpga_drv_uio->base;
+        return true;
+    }
+
+    return false;
+}
+
+/*=============================================================================================*//**
+@brief release the FPGA driver
+
+*//*==============================================================================================*/
+void fpga_drv_exit()
+{
+    uio_exit(fpga_drv_uio);
+    fpga_drv_uio = NULL;
+    ingot_reg    = NULL;
+}
+
 /*=============================================================================================*//**
 @brief Reset the FPGA
 
 *//*==============================================================================================*/
-void FPGA_DRV_reset(void)
+void fpga_drv_reset(void)
 {
-    ingot_t* ingot_reg = (ingot_t*)FPGA_UIO_get_base();
-
     ingot_fabric_write(FAB_NID_QMGR, QMGR_CSR_STATS_CLR, 0);
     ingot_reg->warm_reset = 0xbaad;
 
@@ -64,16 +96,16 @@ void FPGA_DRV_reset(void)
 @brief Get the FPGA version
 
 *//*==============================================================================================*/
-uint64_t FPGA_DRV_get_version()
+uint64_t fpga_drv_get_version()
 {
-    ingot_t* ingot_reg = (ingot_t*)FPGA_UIO_get_base();
-
     return ingot_reg->version;
 }
 
+/*==================================================================================================
+                                          LOCAL FUNCTIONS
+==================================================================================================*/
 uint64_t ingot_fabric_read(uint32_t nid, uint32_t cntl, uint32_t upper_32_bits)
 {
-    ingot_t* ingot_reg = (ingot_t*)FPGA_UIO_get_base();
     uint32_t indirect_reg;
     uint64_t indirect_read;
     uint64_t results = 0;
@@ -97,7 +129,6 @@ uint64_t ingot_fabric_read(uint32_t nid, uint32_t cntl, uint32_t upper_32_bits)
 
 void ingot_fabric_write(uint32_t nid, uint32_t cntl, uint32_t data)
 {
-    ingot_t* ingot_reg = (ingot_t*)FPGA_UIO_get_base();
     uint32_t indirect_reg;
     uint64_t indirect_write;
 
@@ -107,8 +138,4 @@ void ingot_fabric_write(uint32_t nid, uint32_t cntl, uint32_t data)
 
     ingot_reg->fab_write = indirect_write;
 }
-
-/*==================================================================================================
-                                          LOCAL FUNCTIONS
-==================================================================================================*/
 

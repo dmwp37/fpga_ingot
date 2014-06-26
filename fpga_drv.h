@@ -12,6 +12,7 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include <inttypes.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,11 +37,10 @@ extern "C" {
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-void     FPGA_DRV_reset(void);
-uint64_t FPGA_DRV_get_version();
-
-uint64_t ingot_fabric_read(uint32_t nid, uint32_t cntl, uint32_t upper_32_bits);
-void     ingot_fabric_write(uint32_t nid, uint32_t cntl, uint32_t data);
+bool     fpga_drv_init();
+void     fpga_drv_exit();
+void     fpga_drv_reset(void);
+uint64_t fpga_drv_get_version();
 
 #ifdef __cplusplus
 }

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dbg_dump.h>
-#include "fpga_uio.h"
+#include "uio.h"
 #include "fpga_drv.h"
 #include "hp_malloc.h"
 
@@ -23,17 +23,17 @@ void test_hp_malloc()
 
 void test_fpga_uio()
 {
-    if (!FPGA_UIO_init())
+    if (!fpga_drv_init())
     {
         printf("error: fpga uio init failed\n");
         exit(1);
     }
 
-    FPGA_DRV_reset();
+    fpga_drv_reset();
 
-    printf("FPGA ingot version is: 0x%" PRIx64 "\n", FPGA_DRV_get_version());
+    printf("FPGA ingot version is: 0x%" PRIx64 "\n", fpga_drv_get_version());
 
-    FPGA_UIO_exit();
+    fpga_drv_exit();
 }
 
 int main()

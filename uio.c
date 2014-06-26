@@ -1,8 +1,8 @@
 /*==================================================================================================
 
-    Module Name:  fpga_uio.c
+    Module Name:  uio.c
 
-    General Description: Implements the FPGA uio interface
+    General Description: Implements the uio interface
 
 ====================================================================================================
 
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -19,7 +20,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include "fpga_uio.h"
+#include "uio.h"
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -28,24 +29,16 @@
 /*==================================================================================================
                                            LOCAL MACROS
 ==================================================================================================*/
-#define FPGA_INGOT_DRIVER "Ingot FPGA UIO"
 
 /*==================================================================================================
                             LOCAL TYPEDEFS (STRUCTURES, UNIONS, ENUMS)
 ==================================================================================================*/
-typedef struct
-{
-    char  name[24];
-    int   fd;
-    int   mmap_size;
-    void* base;
-} FPGA_UIO_T;
 
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
 static int  uio_get_mem_size(const char* uio, int map_num);
-static bool is_expected_uio(const char* name, const char* driver);
+static bool uio_is_expected(const char* name, const char* driver);
 static bool uio_find(const char* driver, char* uio_name);
 
 /*==================================================================================================
@@ -55,112 +48,91 @@ static bool uio_find(const char* driver, char* uio_name);
 /*==================================================================================================
                                           LOCAL VARIABLES
 ==================================================================================================*/
-static FPGA_UIO_T fpga_uio =
-{
-    .fd        = -1,
-    .base      = NULL,
-    .mmap_size = -1,
-};
 
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
 ==================================================================================================*/
 /*=============================================================================================*//**
-@brief Init FPGA UIO
+@brief Init UIO driver
 
-@return true for success
+@return the uio structure
 *//*==============================================================================================*/
-bool FPGA_UIO_init()
+uio_t* uio_init(const char* driver_name)
 {
-    char  fpga_dev[128];
-    int   fpga_fd;
-    void* fpga_base = NULL;
-    int   mmap_size = -1;
+    char   dev_path[128];
+    int    fd;
+    void*  mmap_base = NULL;
+    int    mmap_size = -1;
+    uio_t* uio       = malloc(sizeof(uio_t));
 
-
-    if (fpga_uio.base != NULL)
+    if (uio == NULL)
     {
-        /* already opened */
-        return true;
+        return NULL;
     }
 
-    if (!uio_find(FPGA_INGOT_DRIVER, fpga_uio.name))
+    if (!uio_find(driver_name, uio->name))
     {
-        printf("error: Can't find FPGA device\n");
-        return false;
+        printf("error: Can't find UIO device for %s\n", driver_name);
+        free(uio);
+        return NULL;
     }
 
-    snprintf(fpga_dev, sizeof(fpga_dev), "/dev/%s", fpga_uio.name);
+    snprintf(dev_path, sizeof(dev_path), "/dev/%s", uio->name);
 
-    if ((fpga_fd = open(fpga_dev, O_RDWR | O_SYNC)) < 0)
+    if ((fd = open(dev_path, O_RDWR | O_SYNC)) < 0)
     {
-        printf("error: Failed to open FPGA device %s. errno=%d(%m)\n", fpga_dev, errno);
-        return false;
+        printf("error: Failed to open uio device %s. errno=%d(%m)\n", dev_path, errno);
+        free(uio);
+        return NULL;
     }
-    else
-    {
-        fpga_uio.fd = fpga_fd;
-    }
+    uio->fd = fd;
 
-    if ((mmap_size = uio_get_mem_size(fpga_uio.name, 0)) < 0)
+    if ((mmap_size = uio_get_mem_size(uio->name, 0)) < 0)
     {
-        printf("error: can't get fpag uio mmap0 size\n");
+        printf("error: can't get %s mmap0 size\n", uio->name);
         goto init_err;
     }
-    else
-    {
-        fpga_uio.mmap_size = mmap_size;
-    }
+    uio->mmap_size = mmap_size;
 
-    if ((fpga_base = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
-                          MAP_SHARED, fpga_uio.fd, 0)) == MAP_FAILED)
+    if ((mmap_base = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
+                          MAP_SHARED, uio->fd, 0)) == MAP_FAILED)
     {
         printf("error: Failed to mmap. errno=%d(%m)\n", errno);
         goto init_err;
     }
-    else
-    {
-        fpga_uio.base = fpga_base;
-    }
+    uio->base = mmap_base;
 
-    return true;
+    return uio;
 
 init_err:
-    if (fpga_uio.fd > 0)
+    if (uio->fd > 0)
     {
-        close(fpga_uio.fd);
-        fpga_uio.fd = -1;
+        close(uio->fd);
+        uio->fd = -1;
     }
-    return false;
+    return NULL;
 }
 
 /*=============================================================================================*//**
-@brief Exit FPGA UIO
+@brief release UIO driver
 
 *//*==============================================================================================*/
-void FPGA_UIO_exit()
+void uio_exit(uio_t* uio)
 {
-    if (fpga_uio.base != NULL)
+    if (uio->base != NULL)
     {
-        munmap(fpga_uio.base, fpga_uio.mmap_size);
-        fpga_uio.mmap_size = -1;
-        fpga_uio.base      = NULL;
+        munmap(uio->base, uio->mmap_size);
+        uio->mmap_size = -1;
+        uio->base      = NULL;
     }
 
-    if (fpga_uio.fd > 0)
+    if (uio->fd > 0)
     {
-        close(fpga_uio.fd);
-        fpga_uio.fd = -1;
+        close(uio->fd);
+        uio->fd = -1;
     }
-}
 
-/*=============================================================================================*//**
-@brief Get the FPGA register
-
-*//*==============================================================================================*/
-void* FPGA_UIO_get_base()
-{
-    return fpga_uio.base;
+    free(uio);
 }
 
 /*==================================================================================================
@@ -237,7 +209,7 @@ bool uio_find(const char* driver, char* uio_name)
             {
                 /* do nothing */
             }
-            else if (is_expected_uio(namelist[i]->d_name, driver))
+            else if (uio_is_expected(namelist[i]->d_name, driver))
             {
                 strcpy(uio_name, namelist[i]->d_name);
                 printf("uio_name is '%s' for driver '%s'\n", uio_name, driver);
@@ -261,7 +233,7 @@ bool uio_find(const char* driver, char* uio_name)
 @return TRUE if the uio is expected, otherwise return FALSE
 
 *//*==============================================================================================*/
-bool is_expected_uio(const char* name, const char* driver)
+bool uio_is_expected(const char* name, const char* driver)
 {
     bool  ret = false;
     char  filename[128];
