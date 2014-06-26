@@ -67,6 +67,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>
