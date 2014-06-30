@@ -137,7 +137,6 @@ struct rte_ring_debug_stats {
  * a problem.
  */
 struct rte_ring {
-	TAILQ_ENTRY(rte_ring) next;      /**< Next in list. */
 	int flags;                       /**< Flags supplied at creation. */
 
 	/** Ring producer status. */
@@ -288,12 +287,8 @@ int rte_ring_init(struct rte_ring *r, unsigned count, unsigned flags);
  *    - EEXIST - a memzone with the same name already exists
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
-#if 0
 struct rte_ring *rte_ring_create(const char *name, unsigned count,
 				 int socket_id, unsigned flags);
-#else
-struct rte_ring *rte_ring_create(unsigned count, unsigned flags);
-#endif
 
 /**
  * Change the high water mark.

@@ -77,8 +77,6 @@
 
 int rte_errno = 0;
 
-TAILQ_HEAD(rte_ring_list, rte_ring);
-
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
 
@@ -133,35 +131,6 @@ rte_ring_init(struct rte_ring *r, unsigned count, unsigned flags)
 	return 0;
 }
 
-/* create the ring */
-struct rte_ring *
-rte_ring_create(unsigned count, unsigned flags)
-{
-	struct rte_ring *r;
-	ssize_t ring_size;
-	hp_t* p_hp;
-	struct rte_ring_list* ring_list = NULL;
-
-	ring_size = rte_ring_get_memsize(count);
-	if (ring_size < 0) {
-		rte_errno = ring_size;
-		return NULL;
-	}
-
-        p_hp = malloc_huge_pages(ring_size);
-	if (p_hp != NULL) {
-		r = p_hp->base;
-		/* no need to check return value here, we already checked the
-		 * arguments above */
-		rte_ring_init(r, count, flags);
-		TAILQ_INSERT_TAIL(ring_list, r, next);
-	} else {
-		r = NULL;
-		printf("error: Cannot reserve huge page memory\n");
-	}
-
-	return r;
-}
 /*
  * change the high water mark. If *count* is 0, water marking is
  * disabled
