@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include "rte/rte_common.h"
 #include "hp_malloc.h"
 
 /*==================================================================================================
@@ -26,7 +27,6 @@
 /*==================================================================================================
                                            LOCAL MACROS
 ==================================================================================================*/
-#define HUGE_PASE_SIZE 0x200000  /*2M, get from /sys/kernel/mm/hugepages or /proc/meminfo*/
 #define BAD_PHYS_ADDR  ((phys_addr_t)-1)
 
 /*==================================================================================================
@@ -57,19 +57,15 @@ static phys_addr_t mem_addr_virt2phy(const void* virtaddr);
 
 @return pointer to huge page structure
 *//*==============================================================================================*/
-hp_t* malloc_huge_pages(size_t size)
+hp_t* hp_alloc(size_t size)
 {
-    size_t real_size = size;
+    size_t real_size = RTE_ALIGN(size, HUGE_PASE_SIZE);
     hp_t*  p_hp      = malloc(sizeof(hp_t));
 
     if (p_hp == NULL)
     {
         return NULL;
     }
-
-    /* align size to huge page size */
-    real_size += (HUGE_PASE_SIZE - 1);
-    real_size &= (~(HUGE_PASE_SIZE - 1));
 
     void* ptr = mmap(NULL, real_size, PROT_READ | PROT_WRITE,
                      MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB, -1, 0);
@@ -81,7 +77,7 @@ hp_t* malloc_huge_pages(size_t size)
     }
     else if ((p_hp->phys_addr = mem_addr_virt2phy(ptr)) == BAD_PHYS_ADDR)
     {
-        free_huge_pages(p_hp);
+        hp_free(p_hp);
         p_hp = NULL;
     }
     else
@@ -104,7 +100,7 @@ hp_t* malloc_huge_pages(size_t size)
 
 @param[in] p_hp - pointer to huge page structure
 *//*==============================================================================================*/
-void free_huge_pages(hp_t* p_hp)
+void hp_free(hp_t* p_hp)
 {
     if (p_hp == NULL)
     {
