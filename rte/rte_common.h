@@ -15,19 +15,6 @@ extern "C" {
 #define __ELASTERROR 1000
 #endif
 
-/** Error types */
-enum {
-    RTE_MIN_ERRNO = __ELASTERROR, /**< Start numbering above std errno vals */
-
-    E_RTE_SECONDARY, /**< Operation not allowed in secondary processes */
-    E_RTE_NO_CONFIG, /**< Missing rte_config */
-    E_RTE_NO_TAILQ,  /**< Uninitialised TAILQ */
-
-    RTE_MAX_ERRNO    /**< Max RTE error number */
-};
-
-#define RTE_RING_SPLIT_PROD_CONS
-
 #define CACHE_LINE_SIZE 64
 #define CACHE_LINE_MASK (CACHE_LINE_SIZE-1)
 #define __rte_cache_aligned __attribute__((__aligned__(CACHE_LINE_SIZE)))

@@ -71,11 +71,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>
-#include "hp_malloc.h"
 #include "rte/rte_ring.h"
-
-
-int rte_errno = 0;
 
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
@@ -99,30 +95,17 @@ rte_ring_get_memsize(unsigned count)
 }
 
 int
-rte_ring_init(struct rte_ring *r, unsigned count, unsigned flags)
+rte_ring_init(struct rte_ring *r, unsigned count)
 {
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
 			  CACHE_LINE_MASK) != 0);
-#ifdef RTE_RING_SPLIT_PROD_CONS
-	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, cons) &
-			  CACHE_LINE_MASK) != 0);
-#endif
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, prod) &
 			  CACHE_LINE_MASK) != 0);
-#ifdef RTE_LIBRTE_RING_DEBUG
-	RTE_BUILD_BUG_ON((sizeof(struct rte_ring_debug_stats) &
-			  CACHE_LINE_MASK) != 0);
-	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, stats) &
-			  CACHE_LINE_MASK) != 0);
-#endif
 
 	/* init the ring structure */
 	memset(r, 0, sizeof(*r));
-	r->flags = flags;
 	r->prod.watermark = count;
-	r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
-	r->cons.sc_dequeue = !!(flags & RING_F_SC_DEQ);
 	r->prod.size = r->cons.size = count;
 	r->prod.mask = r->cons.mask = count-1;
 	r->prod.head = r->cons.head = 0;

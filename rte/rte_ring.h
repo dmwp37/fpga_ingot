@@ -105,27 +105,6 @@ enum rte_ring_queue_behavior {
 	RTE_RING_QUEUE_VARIABLE   /* Enq/Deq as many items a possible from ring */
 };
 
-#ifdef RTE_LIBRTE_RING_DEBUG
-/**
- * A structure that stores the ring statistics (per-lcore).
- */
-struct rte_ring_debug_stats {
-	uint64_t enq_success_bulk; /**< Successful enqueues number. */
-	uint64_t enq_success_objs; /**< Objects successfully enqueued. */
-	uint64_t enq_quota_bulk;   /**< Successful enqueues above watermark. */
-	uint64_t enq_quota_objs;   /**< Objects enqueued above watermark. */
-	uint64_t enq_fail_bulk;    /**< Failed enqueues number. */
-	uint64_t enq_fail_objs;    /**< Objects that failed to be enqueued. */
-	uint64_t deq_success_bulk; /**< Successful dequeues number. */
-	uint64_t deq_success_objs; /**< Objects successfully dequeued. */
-	uint64_t deq_fail_bulk;    /**< Failed dequeues number. */
-	uint64_t deq_fail_objs;    /**< Objects that failed to be dequeued. */
-} __rte_cache_aligned;
-#endif
-
-#define RTE_RING_NAMESIZE 32 /**< The maximum length of a ring name. */
-#define RTE_RING_MZ_PREFIX "RG_"
-
 /**
  * An RTE ring structure.
  *
@@ -137,12 +116,9 @@ struct rte_ring_debug_stats {
  * a problem.
  */
 struct rte_ring {
-	int flags;                       /**< Flags supplied at creation. */
-
 	/** Ring producer status. */
 	struct prod {
 		uint32_t watermark;      /**< Maximum items before EDQUOT. */
-		uint32_t sp_enqueue;     /**< True, if single producer. */
 		uint32_t size;           /**< Size of ring. */
 		uint32_t mask;           /**< Mask (size-1) of ring. */
 		volatile uint32_t head;  /**< Producer head. */
@@ -151,49 +127,20 @@ struct rte_ring {
 
 	/** Ring consumer status. */
 	struct cons {
-		uint32_t sc_dequeue;     /**< True, if single consumer. */
 		uint32_t size;           /**< Size of the ring. */
 		uint32_t mask;           /**< Mask (size-1) of ring. */
 		volatile uint32_t head;  /**< Consumer head. */
 		volatile uint32_t tail;  /**< Consumer tail. */
-#ifdef RTE_RING_SPLIT_PROD_CONS
-	} cons __rte_cache_aligned;
-#else
 	} cons;
-#endif
-
-#ifdef RTE_LIBRTE_RING_DEBUG
-	struct rte_ring_debug_stats stats[RTE_MAX_LCORE];
-#endif
 
 	void * ring[0] __rte_cache_aligned; /**< Memory space of ring starts here.
 	                                     * not volatile so need to be careful
 	                                     * about compiler re-ordering */
 };
 
-#define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
-#define RING_F_SC_DEQ 0x0002 /**< The default dequeue is "single-consumer". */
 #define RTE_RING_QUOT_EXCEED (1 << 31)  /**< Quota exceed for burst ops */
 #define RTE_RING_SZ_MASK  (unsigned)(0x0fffffff) /**< Ring size mask */
 
-/**
- * @internal When debug is enabled, store ring statistics.
- * @param r
- *   A pointer to the ring.
- * @param name
- *   The name of the statistics field to increment in the ring.
- * @param n
- *   The number to add to the object-oriented statistics.
- */
-#ifdef RTE_LIBRTE_RING_DEBUG
-#define __RING_STAT_ADD(r, name, n) do {		\
-		unsigned __lcore_id = rte_lcore_id();	\
-		r->stats[__lcore_id].name##_objs += n;	\
-		r->stats[__lcore_id].name##_bulk += 1;	\
-	} while(0)
-#else
-#define __RING_STAT_ADD(r, name, n) do {} while(0)
-#endif
 
 /**
  * Calculate the memory size needed for a ring
@@ -234,61 +181,11 @@ ssize_t rte_ring_get_memsize(unsigned count);
  *   The name of the ring.
  * @param count
  *   The number of elements in the ring (must be a power of 2).
- * @param flags
- *   An OR of the following:
- *    - RING_F_SP_ENQ: If this flag is set, the default behavior when
- *      using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
- *      is "single-producer". Otherwise, it is "multi-producers".
- *    - RING_F_SC_DEQ: If this flag is set, the default behavior when
- *      using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
- *      is "single-consumer". Otherwise, it is "multi-consumers".
  * @return
  *   0 on success, or a negative value on error.
  */
-int rte_ring_init(struct rte_ring *r, unsigned count, unsigned flags);
+int rte_ring_init(struct rte_ring *r, unsigned count);
 
-/**
- * Create a new ring named *name* in memory.
- *
- * This function uses ``memzone_reserve()`` to allocate memory. Then it
- * calls rte_ring_init() to initialize an empty ring.
- *
- * The new ring size is set to *count*, which must be a power of
- * two. Water marking is disabled by default. The real usable ring size
- * is *count-1* instead of *count* to differentiate a free ring from an
- * empty ring.
- *
- * The ring is added in RTE_TAILQ_RING list.
- *
- * @param name
- *   The name of the ring.
- * @param count
- *   The size of the ring (must be a power of 2).
- * @param socket_id
- *   The *socket_id* argument is the socket identifier in case of
- *   NUMA. The value can be *SOCKET_ID_ANY* if there is no NUMA
- *   constraint for the reserved zone.
- * @param flags
- *   An OR of the following:
- *    - RING_F_SP_ENQ: If this flag is set, the default behavior when
- *      using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
- *      is "single-producer". Otherwise, it is "multi-producers".
- *    - RING_F_SC_DEQ: If this flag is set, the default behavior when
- *      using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
- *      is "single-consumer". Otherwise, it is "multi-consumers".
- * @return
- *   On success, the pointer to the new allocated ring. NULL on error with
- *    rte_errno set appropriately. Possible errno values include:
- *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
- *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the ring list
- *    - EINVAL - count provided is not a power of 2
- *    - ENOSPC - the maximum number of memzones has already been allocated
- *    - EEXIST - a memzone with the same name already exists
- *    - ENOMEM - no appropriate memory area found in which to create memzone
- */
-struct rte_ring *rte_ring_create(const char *name, unsigned count,
-				 int socket_id, unsigned flags);
 
 /**
  * Change the high water mark.
@@ -309,16 +206,6 @@ struct rte_ring *rte_ring_create(const char *name, unsigned count,
  *   - -EINVAL: Invalid water mark value.
  */
 int rte_ring_set_water_mark(struct rte_ring *r, unsigned count);
-
-/**
- * Dump the status of the ring to the console.
- *
- * @param f
- *   A pointer to a file for output
- * @param r
- *   A pointer to the ring structure.
- */
-void rte_ring_dump(FILE *f, const struct rte_ring *r);
 
 /* the actual enqueue of pointers on the ring.
  * Placed here since identical code needed in both
@@ -425,13 +312,11 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 		/* check that we have enough room in ring */
 		if (unlikely(n > free_entries)) {
 			if (behavior == RTE_RING_QUEUE_FIXED) {
-				__RING_STAT_ADD(r, enq_fail, n);
 				return -ENOBUFS;
 			}
 			else {
 				/* No free entry available */
 				if (unlikely(free_entries == 0)) {
-					__RING_STAT_ADD(r, enq_fail, n);
 					return 0;
 				}
 
@@ -452,11 +337,9 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	if (unlikely(((mask + 1) - free_entries + n) > r->prod.watermark)) {
 		ret = (behavior == RTE_RING_QUEUE_FIXED) ? -EDQUOT :
 				(int)(n | RTE_RING_QUOT_EXCEED);
-		__RING_STAT_ADD(r, enq_quota, n);
 	}
 	else {
 		ret = (behavior == RTE_RING_QUEUE_FIXED) ? 0 : n;
-		__RING_STAT_ADD(r, enq_success, n);
 	}
 
 	/*
@@ -513,13 +396,11 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	/* check that we have enough room in ring */
 	if (unlikely(n > free_entries)) {
 		if (behavior == RTE_RING_QUEUE_FIXED) {
-			__RING_STAT_ADD(r, enq_fail, n);
 			return -ENOBUFS;
 		}
 		else {
 			/* No free entry available */
 			if (unlikely(free_entries == 0)) {
-				__RING_STAT_ADD(r, enq_fail, n);
 				return 0;
 			}
 
@@ -538,11 +419,9 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	if (unlikely(((mask + 1) - free_entries + n) > r->prod.watermark)) {
 		ret = (behavior == RTE_RING_QUEUE_FIXED) ? -EDQUOT :
 			(int)(n | RTE_RING_QUOT_EXCEED);
-		__RING_STAT_ADD(r, enq_quota, n);
 	}
 	else {
 		ret = (behavior == RTE_RING_QUEUE_FIXED) ? 0 : n;
-		__RING_STAT_ADD(r, enq_success, n);
 	}
 
 	r->prod.tail = prod_next;
@@ -603,12 +482,10 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 		/* Set the actual entries for dequeue */
 		if (n > entries) {
 			if (behavior == RTE_RING_QUEUE_FIXED) {
-				__RING_STAT_ADD(r, deq_fail, n);
 				return -ENOENT;
 			}
 			else {
 				if (unlikely(entries == 0)){
-					__RING_STAT_ADD(r, deq_fail, n);
 					return 0;
 				}
 
@@ -632,7 +509,6 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	while (unlikely(r->cons.tail != cons_head))
 		rte_pause();
 
-	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;
 
 	return behavior == RTE_RING_QUEUE_FIXED ? 0 : n;
@@ -680,12 +556,10 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	if (n > entries) {
 		if (behavior == RTE_RING_QUEUE_FIXED) {
-			__RING_STAT_ADD(r, deq_fail, n);
 			return -ENOENT;
 		}
 		else {
 			if (unlikely(entries == 0)){
-				__RING_STAT_ADD(r, deq_fail, n);
 				return 0;
 			}
 
@@ -700,7 +574,6 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 	DEQUEUE_PTRS();
 	rte_compiler_barrier();
 
-	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;
 	return behavior == RTE_RING_QUEUE_FIXED ? 0 : n;
 }
@@ -752,34 +625,6 @@ rte_ring_sp_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 	return __rte_ring_sp_do_enqueue(r, obj_table, n, RTE_RING_QUEUE_FIXED);
 }
 
-/**
- * Enqueue several objects on a ring.
- *
- * This function calls the multi-producer or the single-producer
- * version depending on the default behavior that was specified at
- * ring creation time (see flags).
- *
- * @param r
- *   A pointer to the ring structure.
- * @param obj_table
- *   A pointer to a table of void * pointers (objects).
- * @param n
- *   The number of objects to add in the ring from the obj_table.
- * @return
- *   - 0: Success; objects enqueued.
- *   - -EDQUOT: Quota exceeded. The objects have been enqueued, but the
- *     high water mark is exceeded.
- *   - -ENOBUFS: Not enough room in the ring to enqueue; no object is enqueued.
- */
-static inline int __attribute__((always_inline))
-rte_ring_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
-		      unsigned n)
-{
-	if (r->prod.sp_enqueue)
-		return rte_ring_sp_enqueue_bulk(r, obj_table, n);
-	else
-		return rte_ring_mp_enqueue_bulk(r, obj_table, n);
-}
 
 /**
  * Enqueue one object on a ring (multi-producers safe).
@@ -820,32 +665,6 @@ static inline int __attribute__((always_inline))
 rte_ring_sp_enqueue(struct rte_ring *r, void *obj)
 {
 	return rte_ring_sp_enqueue_bulk(r, &obj, 1);
-}
-
-/**
- * Enqueue one object on a ring.
- *
- * This function calls the multi-producer or the single-producer
- * version, depending on the default behaviour that was specified at
- * ring creation time (see flags).
- *
- * @param r
- *   A pointer to the ring structure.
- * @param obj
- *   A pointer to the object to be added.
- * @return
- *   - 0: Success; objects enqueued.
- *   - -EDQUOT: Quota exceeded. The objects have been enqueued, but the
- *     high water mark is exceeded.
- *   - -ENOBUFS: Not enough room in the ring to enqueue; no object is enqueued.
- */
-static inline int __attribute__((always_inline))
-rte_ring_enqueue(struct rte_ring *r, void *obj)
-{
-	if (r->prod.sp_enqueue)
-		return rte_ring_sp_enqueue(r, obj);
-	else
-		return rte_ring_mp_enqueue(r, obj);
 }
 
 /**
@@ -893,33 +712,6 @@ rte_ring_sc_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
 }
 
 /**
- * Dequeue several objects from a ring.
- *
- * This function calls the multi-consumers or the single-consumer
- * version, depending on the default behaviour that was specified at
- * ring creation time (see flags).
- *
- * @param r
- *   A pointer to the ring structure.
- * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
- * @param n
- *   The number of objects to dequeue from the ring to the obj_table.
- * @return
- *   - 0: Success; objects dequeued.
- *   - -ENOENT: Not enough entries in the ring to dequeue, no object is
- *     dequeued.
- */
-static inline int __attribute__((always_inline))
-rte_ring_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
-{
-	if (r->cons.sc_dequeue)
-		return rte_ring_sc_dequeue_bulk(r, obj_table, n);
-	else
-		return rte_ring_mc_dequeue_bulk(r, obj_table, n);
-}
-
-/**
  * Dequeue one object from a ring (multi-consumers safe).
  *
  * This function uses a "compare and set" instruction to move the
@@ -958,30 +750,6 @@ rte_ring_sc_dequeue(struct rte_ring *r, void **obj_p)
 	return rte_ring_sc_dequeue_bulk(r, obj_p, 1);
 }
 
-/**
- * Dequeue one object from a ring.
- *
- * This function calls the multi-consumers or the single-consumer
- * version depending on the default behaviour that was specified at
- * ring creation time (see flags).
- *
- * @param r
- *   A pointer to the ring structure.
- * @param obj_p
- *   A pointer to a void * pointer (object) that will be filled.
- * @return
- *   - 0: Success, objects dequeued.
- *   - -ENOENT: Not enough entries in the ring to dequeue, no object is
- *     dequeued.
- */
-static inline int __attribute__((always_inline))
-rte_ring_dequeue(struct rte_ring *r, void **obj_p)
-{
-	if (r->cons.sc_dequeue)
-		return rte_ring_sc_dequeue(r, obj_p);
-	else
-		return rte_ring_mc_dequeue(r, obj_p);
-}
 
 /**
  * Test if a ring is full.
@@ -1050,26 +818,6 @@ rte_ring_free_count(const struct rte_ring *r)
 }
 
 /**
- * Dump the status of all rings on the console
- *
- * @param f
- *   A pointer to a file for output
- */
-void rte_ring_list_dump(FILE *f);
-
-/**
- * Search a ring from its name
- *
- * @param name
- *   The name of the ring.
- * @return
- *   The pointer to the ring matching the name, or NULL if not found,
- *   with rte_errno set appropriately. Possible rte_errno values include:
- *    - ENOENT - required entry not available to return.
- */
-struct rte_ring *rte_ring_lookup(const char *name);
-
-/**
  * Enqueue several objects on the ring (multi-producers safe).
  *
  * This function uses a "compare and set" instruction to move the
@@ -1108,32 +856,6 @@ rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
 	return __rte_ring_sp_do_enqueue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE);
-}
-
-/**
- * Enqueue several objects on a ring.
- *
- * This function calls the multi-producer or the single-producer
- * version depending on the default behavior that was specified at
- * ring creation time (see flags).
- *
- * @param r
- *   A pointer to the ring structure.
- * @param obj_table
- *   A pointer to a table of void * pointers (objects).
- * @param n
- *   The number of objects to add in the ring from the obj_table.
- * @return
- *   - n: Actual number of objects enqueued.
- */
-static inline int __attribute__((always_inline))
-rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
-		      unsigned n)
-{
-	if (r->prod.sp_enqueue)
-		return rte_ring_sp_enqueue_burst(r, obj_table, n);
-	else
-		return rte_ring_mp_enqueue_burst(r, obj_table, n);
 }
 
 /**
@@ -1177,31 +899,6 @@ static inline int __attribute__((always_inline))
 rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_sc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE);
-}
-
-/**
- * Dequeue multiple objects from a ring up to a maximum number.
- *
- * This function calls the multi-consumers or the single-consumer
- * version, depending on the default behaviour that was specified at
- * ring creation time (see flags).
- *
- * @param r
- *   A pointer to the ring structure.
- * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
- * @param n
- *   The number of objects to dequeue from the ring to the obj_table.
- * @return
- *   - Number of objects dequeued, or a negative error code on error
- */
-static inline int __attribute__((always_inline))
-rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
-{
-	if (r->cons.sc_dequeue)
-		return rte_ring_sc_dequeue_burst(r, obj_table, n);
-	else
-		return rte_ring_mc_dequeue_burst(r, obj_table, n);
 }
 
 #ifdef __cplusplus
