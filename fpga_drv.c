@@ -18,6 +18,7 @@
 #include "jspec/mmap.h"
 #include "jspec/ingot.h"
 #include "jspec/fabric_defines.h"
+#include "rte/rte_common.h"
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -118,11 +119,7 @@ uint64_t ingot_fabric_read(uint32_t nid, uint32_t cntl, uint32_t upper_32_bits)
 
     /* here should prevent optimization */
     ingot_reg->fab_read = indirect_read;
-
-    results = ingot_reg->fab_read;
-    results = ingot_reg->fab_read;
-    results = ingot_reg->fab_read;
-    results = ingot_reg->fab_read;
+    rte_compiler_barrier();
     results = ingot_reg->fab_read;
 
     results = results & 0x00000000FFFFFFFF;
