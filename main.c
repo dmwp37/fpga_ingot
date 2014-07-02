@@ -5,19 +5,16 @@
 #include "uio.h"
 #include "fpga_drv.h"
 #include "hp_malloc.h"
-#include "mbuf.h"
+#include "mem_map.h"
+#include "rx_mbuf.h"
 
-void test_mbuf()
+void test_rx_mbuf()
 {
-    mbuf_pool_t* pool = mbuf_pool_alloc(1024);
+    rx_mbuf_init();
 
-    DBG_PRINT(*pool);
+    void* mbuf = rx_mbuf_get();
 
-    void* mbuf = mbuf_get(pool);
-
-    mbuf_put(pool, mbuf);
-
-    mbuf_pool_free(pool);
+    rx_mbuf_put(mbuf);
 }
 
 void test_hp_malloc()
@@ -54,9 +51,12 @@ void test_fpga_uio()
 
 int main()
 {
+    dump_mem_map();
+    mem_map_init();
     test_hp_malloc();
-    test_mbuf();
+    test_rx_mbuf();
     test_fpga_uio();
+    mem_map_exit();
     return 0;
 }
 

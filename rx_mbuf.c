@@ -1,8 +1,8 @@
 /*==================================================================================================
 
-    Module Name:  mbuf.c
+    Module Name:  rx_mbuf.c
 
-    General Description: Implements the mbuf management
+    General Description: Implements the rx_mbuf management
 
 ====================================================================================================
 
@@ -10,7 +10,8 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include <stdlib.h>
-#include "mbuf.h"
+#include "mem_map.h"
+#include "rx_mbuf.h"
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -41,85 +42,30 @@
 ==================================================================================================*/
 
 /*=============================================================================================*//**
-@brief malloc mbuf poll
-
-@param[in] count - how many mbuf the pool contains, each mbuf is a 2k bytes buffer
-
-@return pointer to mbuf_pool
+@brief init rx mbuf rte_rings
 *//*==============================================================================================*/
-mbuf_pool_t* mbuf_pool_alloc(unsigned count)
+void  rx_mbuf_init()
 {
-    ssize_t      real_size;
-    int          mbuf_offset;
-    mbuf_pool_t* p_mbuf_pool = malloc(sizeof(mbuf_pool_t));
-    hp_t*        p_hp;
+    int              i;
+    struct rte_ring* r      = global_mem->base + RX_MBUF_RING_OFFSET;
+    void*            p_mbuf = rx_mbuf_mem->base;
 
+    rte_ring_init(r, RX_MBUF_COUNT);
 
-    if (p_mbuf_pool == NULL)
+    for (i = 0; i < RX_MBUF_COUNT; i++, p_mbuf += MBUF_SIZE)
     {
-        return NULL;
+        r->ring[i] = p_mbuf;
     }
 
-    real_size   = rte_ring_get_memsize(count);
-    real_size   = RTE_ALIGN(real_size, MBUF_SIZE);
-    mbuf_offset = real_size;
-    real_size  += MBUF_SIZE * count;
+    /* till now the ring should be full */
+    r->prod.head += RX_MBUF_COUNT - 1;
+    r->prod.tail += RX_MBUF_COUNT - 1;
 
-    p_hp = hp_alloc(real_size);
-
-    if (p_hp == NULL)
+    if (!rte_ring_full(r))
     {
-        printf("%s(): cannot alloc huge page\n", __func__);
-        free(p_mbuf_pool);
-        p_mbuf_pool = NULL;
+        printf("%s(): the rx mbuf pool ring is not full!\n", __func__);
+        exit(1);
     }
-    else
-    {
-        int              i;
-        struct rte_ring* r      = p_hp->base;
-        void*            p_mbuf = p_hp->base + mbuf_offset;
-
-        p_mbuf_pool->p_hp      = p_hp;
-        p_mbuf_pool->p_ring    = r;
-        p_mbuf_pool->mbuf_base = p_mbuf;
-
-        rte_ring_init(p_hp->base, count);
-
-        for (i = 0; i < count; i++)
-        {
-            r->ring[i] = p_mbuf;
-            p_mbuf    += MBUF_SIZE;
-        }
-
-        /* till now the ring should be full */
-        r->prod.head += count;
-        r->prod.tail += count;
-
-        if (!rte_ring_full(r))
-        {
-            printf("%s(): the mbuf pool ring is not full!\n", __func__);
-            mbuf_pool_free(p_mbuf_pool);
-            exit(1);
-        }
-    }
-
-    return p_mbuf_pool;
-}
-
-/*=============================================================================================*//**
-@brief free mbuf pool
-
-@param[in] pool - pointer to mbuf pool
-*//*==============================================================================================*/
-void mbuf_pool_free(mbuf_pool_t* pool)
-{
-    if (pool == NULL)
-    {
-        return;
-    }
-
-    hp_free(pool->p_hp);
-    free(pool);
 }
 
 /*=============================================================================================*//**
@@ -127,12 +73,13 @@ void mbuf_pool_free(mbuf_pool_t* pool)
 
 @param[in] pool - pointer to mbuf pool
 *//*==============================================================================================*/
-void* mbuf_get(mbuf_pool_t* pool)
+void* rx_mbuf_get()
 {
-    void* mbuf = NULL;
+    void*            mbuf = NULL;
+    struct rte_ring* r    = global_mem->base + RX_MBUF_RING_OFFSET;
 
     /* this is sc dequeue for the rx thread, not mc */
-    if (rte_ring_sc_dequeue(pool->p_ring, &mbuf) != 0)
+    if (rte_ring_sc_dequeue(r, &mbuf) != 0)
     {
         printf("%s(): no mbuf available in the mbuf pool!\n", __func__);
         return NULL;
@@ -147,9 +94,11 @@ void* mbuf_get(mbuf_pool_t* pool)
 
 @param[in] mbuf - pointer to one mbuf
 *//*==============================================================================================*/
-void mbuf_put(mbuf_pool_t* pool, void* mbuf)
+void rx_mbuf_put(void* mbuf)
 {
-    if (rte_ring_mp_enqueue(pool->p_ring, &mbuf) != 0)
+    struct rte_ring* r = global_mem->base + RX_MBUF_RING_OFFSET;
+
+    if (rte_ring_mp_enqueue(r, &mbuf) != 0)
     {
         printf("%s(): can't enqueue mbuf to the mbuf pool!\n", __func__);
     }

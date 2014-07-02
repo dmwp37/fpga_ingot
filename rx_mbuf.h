@@ -1,10 +1,10 @@
-#ifndef _MBUF_H_
-#define _MBUF_H_
+#ifndef _RX_MBUF_H_
+#define _RX_MBUF_H_
 /*==================================================================================================
 
-    Module Name:  mbuf.h
+    Module Name:  rx_mbuf.h
 
-    General Description: This file provides mbuf malloc interface
+    General Description: This file provides rx mbuf malloc interface
 
 ====================================================================================================
 
@@ -12,7 +12,7 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include "hp_malloc.h"
-#include "rte/rte_ring.h"
+#include "rte_ring.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +21,6 @@ extern "C" {
 /*==================================================================================================
                                               MACROS
 ==================================================================================================*/
-#define MBUF_SIZE 2048 /* 2k mbuf */
 
 /*==================================================================================================
                                                ENUMS
@@ -30,12 +29,6 @@ extern "C" {
 /*==================================================================================================
                                    STRUCTURES AND OTHER TYPEDEFS
 ==================================================================================================*/
-typedef struct
-{
-    struct rte_ring* p_ring;
-    hp_t*            p_hp;
-    void*            mbuf_base;
-} mbuf_pool_t;
 
 /*==================================================================================================
                                    GLOBAL VARIABLE DECLARATIONS
@@ -44,11 +37,9 @@ typedef struct
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-mbuf_pool_t* mbuf_pool_alloc(unsigned count);
-void         mbuf_pool_free(mbuf_pool_t* pool);
-
-void* mbuf_get(mbuf_pool_t* pool);
-void  mbuf_put(mbuf_pool_t* pool, void* mbuf);
+void  rx_mbuf_init();
+void* rx_mbuf_get();
+void  rx_mbuf_put();
 
 #ifdef __cplusplus
 }
@@ -57,5 +48,5 @@ void  mbuf_put(mbuf_pool_t* pool, void* mbuf);
 /** @} */
 /** @} */
 
-#endif /* _MBUF_H_  */
+#endif /* _RX_MBUF_H_  */
 
