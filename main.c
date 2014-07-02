@@ -9,13 +9,6 @@
 #include "rx_mbuf.h"
 #include "fpga_tx.h"
 
-void test_fpga_tx()
-{
-    fpga_tx_init();
-
-    fpga_tx(global_mem->base, 1024);
-}
-
 void test_rx_mbuf()
 {
     rx_mbuf_init();
@@ -53,6 +46,10 @@ void test_fpga_uio()
     fpga_drv_reset();
 
     printf("FPGA ingot version is: 0x%" PRIx64 "\n", fpga_drv_get_version());
+    
+    fpga_tx_init();
+
+    fpga_tx(global_mem->base, 1024);
 
     fpga_drv_exit();
 }
@@ -64,7 +61,6 @@ int main()
     test_hp_malloc();
     test_rx_mbuf();
     test_fpga_uio();
-    test_fpga_tx();
     mem_map_exit();
     return 0;
 }
