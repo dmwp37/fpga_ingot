@@ -10,7 +10,6 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include <string.h>
-#include <stdio.h>
 #include <errno.h>
 #include "rte_common.h"
 #include "mem_map.h"
@@ -30,15 +29,11 @@
 /*==================================================================================================
                             LOCAL TYPEDEFS (STRUCTURES, UNIONS, ENUMS)
 ==================================================================================================*/
-typedef struct
-{
-    uint8_t transmit_queue;
-    uint8_t rsvd_1[15];
-} meta_data_t;
 
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
+static inline void setup_packet(void* mbuf, int port, const void* buf, size_t len);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
@@ -69,12 +64,13 @@ void fpga_tx_init()
 /*=============================================================================================*//**
 @brief transmit a packet with lock less multi thread support.
 
-@param[in] buf - the buffer contains the packet
-@param[in] len - packet buffer length
+@param[in] port - which port to send packet
+@param[in] buf  - the buffer contains the packet
+@param[in] len  - packet buffer length
 
 @return 0 if success
 *//*==============================================================================================*/
-int fpga_tx(const void* buf, size_t len)
+int fpga_tx(int port, const void* buf, size_t len)
 {
     uint32_t          head;
     uint32_t          idx;
@@ -82,7 +78,6 @@ int fpga_tx(const void* buf, size_t len)
     void*             tx_mbuf   = global_mem->base + TX_MBUF_OFFSET;
     tx_descp_entry_t* p_tx_desc = global_mem->base + TX_DESCRIPTOR_OFFSET;
     uint64_t          reg       = 0;
-    meta_data_t       meta      = { 0 };
     int               success;
     /* move tx_head atomically */
     do
@@ -105,20 +100,20 @@ int fpga_tx(const void* buf, size_t len)
         success = rte_atomic32_cmpset(&tx_head, head, head + 1);
     } while (unlikely(success == 0));
 
+    /* prepare mbuf data to tx */
     tx_mbuf += MBUF_SIZE * idx;
-    /* add meta data header */
-    memcpy(tx_mbuf, &meta, sizeof(meta));
-    /* copy data to the tx mbuf */
-    memcpy(tx_mbuf + sizeof(meta), buf, len);
-    /* write entries in ring */
+    setup_packet(tx_mbuf, port, buf, len);
     p_tx_desc[idx].bufptr = (uint64_t*)tx_mbuf;
-    p_tx_desc[idx].buflen = len;
 
+
+    /* prepare the register */
     reg = INGOT_REGLB_LENGTH_SET(reg, len);
     /* reg = INGOT_REGLB_QUEUE_SET(reg,TX_QUEUE); */
-    reg  = INGOT_REGLB_QUEUE_SET(reg, meta.transmit_queue);
+    reg  = INGOT_REGLB_QUEUE_SET(reg, port);
     reg |= idx;
+
     rte_compiler_barrier();
+
     /* write to the fpga hardware */
     ingot_reg->tx_packet = reg;
 
@@ -128,4 +123,20 @@ int fpga_tx(const void* buf, size_t len)
 /*==================================================================================================
                                           LOCAL FUNCTIONS
 ==================================================================================================*/
+
+void setup_packet(void* mbuf, int port, const void* buf, size_t len)
+{
+    meta_header_t meta = { 0 };
+    meta.transmit_queue = port;
+
+    /* add meta header */
+    memcpy(mbuf, &meta, sizeof(meta));
+    mbuf += sizeof(meta_header_t);
+
+    /* add higig2 header */
+    /* m_buf += sizeof(higig2_header_t); */
+
+    /* copy rest data to the tx mbuf */
+    memcpy(mbuf, buf, len);
+}
 

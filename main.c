@@ -46,10 +46,10 @@ void test_fpga_uio()
     fpga_drv_reset();
 
     printf("FPGA ingot version is: 0x%" PRIx64 "\n", fpga_drv_get_version());
-    
+
     fpga_tx_init();
 
-    fpga_tx(global_mem->base, 1024);
+    fpga_tx(0, global_mem->base, 1024);
 
     fpga_drv_exit();
 }

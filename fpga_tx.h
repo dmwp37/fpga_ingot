@@ -37,7 +37,7 @@ extern "C" {
 ==================================================================================================*/
 void fpga_tx_init();
 
-int fpga_tx(const void* buf, size_t len);
+int fpga_tx(int port, const void* buf, size_t len);
 
 #ifdef __cplusplus
 }

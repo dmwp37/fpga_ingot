@@ -12,6 +12,7 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include <inttypes.h>
+#include "net_stack.h"
 #include "hp_malloc.h"
 #include "rte_ring.h"
 
@@ -72,18 +73,6 @@ extern "C" {
 /*==================================================================================================
                                    STRUCTURES AND OTHER TYPEDEFS
 ==================================================================================================*/
-typedef struct
-{
-    uint64_t* bufptr;
-    uint64_t  buflen;
-} tx_descp_entry_t;
-
-typedef struct
-{
-    uint64_t  buflen;
-    uint64_t* bufptr;
-} rx_descp_entry_t;
-
 
 /*==================================================================================================
                                    GLOBAL VARIABLE DECLARATIONS
