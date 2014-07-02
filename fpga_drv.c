@@ -18,7 +18,7 @@
 #include "jspec/mmap.h"
 #include "jspec/ingot.h"
 #include "jspec/fabric_defines.h"
-#include "rte/rte_common.h"
+#include "rte_common.h"
 
 /*==================================================================================================
                                           LOCAL CONSTANTS

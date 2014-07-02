@@ -71,63 +71,66 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>
-#include "rte/rte_ring.h"
+#include "rte_ring.h"
 
 /* true if x is a power of 2 */
-#define POWEROF2(x) ((((x)-1) & (x)) == 0)
+#define POWEROF2(x) ((((x) - 1) & (x)) == 0)
 
 /* return the size of memory occupied by a ring */
-ssize_t
-rte_ring_get_memsize(unsigned count)
+ssize_t rte_ring_get_memsize(unsigned count)
 {
-	ssize_t sz;
+    ssize_t sz;
 
-	/* count must be a power of 2 */
-	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
-		printf("Requested size is invalid, must be power of 2, and "
-                       "do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
-		return -EINVAL;
-	}
+    /* count must be a power of 2 */
+    if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK))
+    {
+        printf("Requested size is invalid, must be power of 2, and "
+               "do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
+        return -EINVAL;
+    }
 
-	sz = sizeof(struct rte_ring) + count * sizeof(void *);
-	sz = RTE_ALIGN(sz, CACHE_LINE_SIZE);
-	return sz;
+    sz = sizeof(struct rte_ring) + count * sizeof(void*);
+    sz = RTE_ALIGN(sz, CACHE_LINE_SIZE);
+    return sz;
 }
 
-int
-rte_ring_init(struct rte_ring *r, unsigned count)
+int rte_ring_init(struct rte_ring* r, unsigned count)
 {
-	/* compilation-time checks */
-	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
-			  CACHE_LINE_MASK) != 0);
-	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, prod) &
-			  CACHE_LINE_MASK) != 0);
+    /* compilation-time checks */
+    RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
+                      CACHE_LINE_MASK) != 0);
+    RTE_BUILD_BUG_ON((offsetof(struct rte_ring, prod) &
+                      CACHE_LINE_MASK) != 0);
 
-	/* init the ring structure */
-	memset(r, 0, sizeof(*r));
-	r->prod.watermark = count;
-	r->prod.size = r->cons.size = count;
-	r->prod.mask = r->cons.mask = count-1;
-	r->prod.head = r->cons.head = 0;
-	r->prod.tail = r->cons.tail = 0;
+    /* init the ring structure */
+    memset(r, 0, sizeof(*r));
+    r->prod.watermark = count;
+    r->prod.size      = r->cons.size = count;
+    r->prod.mask      = r->cons.mask = count - 1;
+    r->prod.head      = r->cons.head = 0;
+    r->prod.tail      = r->cons.tail = 0;
 
-	return 0;
+    return 0;
 }
 
 /*
  * change the high water mark. If *count* is 0, water marking is
  * disabled
  */
-int
-rte_ring_set_water_mark(struct rte_ring *r, unsigned count)
+int rte_ring_set_water_mark(struct rte_ring* r, unsigned count)
 {
-	if (count >= r->prod.size)
-		return -EINVAL;
+    if (count >= r->prod.size)
+    {
+        return -EINVAL;
+    }
 
-	/* if count is 0, disable the water marking */
-	if (count == 0)
-		count = r->prod.size;
+    /* if count is 0, disable the water marking */
+    if (count == 0)
+    {
+        count = r->prod.size;
+    }
 
-	r->prod.watermark = count;
-	return 0;
+    r->prod.watermark = count;
+    return 0;
 }
+
