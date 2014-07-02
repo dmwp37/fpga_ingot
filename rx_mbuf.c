@@ -60,12 +60,6 @@ void  rx_mbuf_init()
     /* till now the ring should be full */
     r->prod.head += RX_MBUF_COUNT - 1;
     r->prod.tail += RX_MBUF_COUNT - 1;
-
-    if (!rte_ring_full(r))
-    {
-        printf("%s(): the rx mbuf pool ring is not full!\n", __func__);
-        exit(1);
-    }
 }
 
 /*=============================================================================================*//**
