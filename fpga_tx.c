@@ -1,141 +1,131 @@
 /*==================================================================================================
 
-    Module Name:  fpga_drv.c
+    Module Name:  fpga_tx.c
 
-    General Description: Implements the FPGA ingot driver interface
+    General Description: Implements the FPGA tx driver interface
 
 ====================================================================================================
 
 ====================================================================================================
                                            INCLUDE FILES
 ==================================================================================================*/
+#include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/queue.h>
-#include "uio.h"
-#include "fpga_drv.h"
-#include "jspec/mmap.h"
-#include "jspec/ingot.h"
-#include "jspec/fabric_defines.h"
+#include <errno.h>
 #include "rte_common.h"
+#include "mem_map.h"
+#include "jspec/ingot.h"
+#include "fpga_drv.h"
+#include "fpga_tx.h"
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
 ==================================================================================================*/
+#define TX_RING_MASK (TX_DESCRIPTOR_COUNT - 1)
 
 /*==================================================================================================
                                            LOCAL MACROS
 ==================================================================================================*/
-#define FPGA_INGOT_DRIVER "Ingot FPGA UIO"
 
 /*==================================================================================================
                             LOCAL TYPEDEFS (STRUCTURES, UNIONS, ENUMS)
 ==================================================================================================*/
+typedef struct
+{
+    uint8_t transmit_queue;
+    uint8_t rsvd_1[15];
+} meta_data_t;
 
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
-uint64_t ingot_fabric_read(uint32_t nid, uint32_t cntl, uint32_t upper_32_bits);
-void     ingot_fabric_write(uint32_t nid, uint32_t cntl, uint32_t data);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
 ==================================================================================================*/
-volatile ingot_t* ingot_reg = NULL;
 
 /*==================================================================================================
                                           LOCAL VARIABLES
 ==================================================================================================*/
-static uio_t* fpga_drv_uio = NULL;
+static volatile uint32_t tx_head = 0;
 
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
 ==================================================================================================*/
 
 /*=============================================================================================*//**
-@brief init the FPGA driver
-
-@return -1 if error happened, 0 for success
+@brief init the FPGA tx driver
 *//*==============================================================================================*/
-int fpga_drv_init()
+void fpga_tx_init()
 {
-    fpga_drv_uio = uio_init(FPGA_INGOT_DRIVER);
+    phys_addr_t phys_base = global_mem->phys_addr;
 
-    if (fpga_drv_uio != NULL)
+    ingot_reg->tx_desc_base = phys_base + TX_DESCRIPTOR_OFFSET;
+    ingot_reg->tx_buf_base  = phys_base + TX_MBUF_OFFSET;
+
+    memset(global_mem->base + TX_DESCRIPTOR_OFFSET, 0, TX_DESCRIPTOR_SIZE);
+}
+
+/*=============================================================================================*//**
+@brief transmit a packet with lock less multi thread support.
+
+@param[in] buf - the buffer contains the packet
+@param[in] len - packet buffer length
+
+@return 0 if success
+*//*==============================================================================================*/
+int fpga_tx(const void* buf, size_t len)
+{
+    uint32_t          head;
+    uint32_t          idx;
+    uint32_t          retry     = 0;
+    void*             tx_mbuf   = global_mem->base + TX_MBUF_OFFSET;
+    tx_descp_entry_t* p_tx_desc = global_mem->base + TX_DESCRIPTOR_OFFSET;
+    uint64_t          reg       = 0;
+    meta_data_t       meta      = { 0 };
+    int               success;
+    /* move tx_head atomically */
+    do
     {
-        ingot_reg = (ingot_t*)fpga_drv_uio->base;
-        return 0;
-    }
+        head = tx_head;
+        idx  = head & TX_RING_MASK;
 
-    return -1;
-}
+        /* check that we have tx entry available in ring */
+        if (unlikely(p_tx_desc[idx].bufptr != NULL))
+        {
+            if (retry > 10000000)
+            {
+                printf("TX stuck while processing TX Descp #%d\n", idx);
+                return -ENOBUFS;
+            }
+            retry++;
+            continue;
+        }
+        /* test and increase tx_head atomically */
+        success = rte_atomic32_cmpset(&tx_head, head, head + 1);
+    } while (unlikely(success == 0));
 
-/*=============================================================================================*//**
-@brief release the FPGA driver
+    tx_mbuf += MBUF_SIZE * idx;
+    /* add meta data header */
+    memcpy(tx_mbuf, &meta, sizeof(meta));
+    /* copy data to the tx mbuf */
+    memcpy(tx_mbuf + sizeof(meta), buf, len);
+    /* write entries in ring */
+    p_tx_desc[idx].bufptr = (uint64_t*)tx_mbuf;
+    p_tx_desc[idx].buflen = len;
 
-*//*==============================================================================================*/
-void fpga_drv_exit()
-{
-    uio_exit(fpga_drv_uio);
-    fpga_drv_uio = NULL;
-    ingot_reg    = NULL;
-}
+    reg = INGOT_REGLB_LENGTH_SET(reg, len);
+    /* reg = INGOT_REGLB_QUEUE_SET(reg,TX_QUEUE); */
+    reg  = INGOT_REGLB_QUEUE_SET(reg, meta.transmit_queue);
+    reg |= idx;
+    rte_compiler_barrier();
+    /* write to the fpga hardware */
+    ingot_reg->tx_packet = reg;
 
-/*=============================================================================================*//**
-@brief Reset the FPGA
-
-*//*==============================================================================================*/
-void fpga_drv_reset(void)
-{
-    ingot_fabric_write(FAB_NID_QMGR, QMGR_CSR_STATS_CLR, 0);
-    ingot_reg->warm_reset = 0xbaad;
-
-    printf("reset FPGA\n");
-    usleep(10000);
-}
-
-/*=============================================================================================*//**
-@brief Get the FPGA version
-
-*//*==============================================================================================*/
-uint64_t fpga_drv_get_version()
-{
-    return ingot_reg->version;
+    return 0;
 }
 
 /*==================================================================================================
                                           LOCAL FUNCTIONS
 ==================================================================================================*/
-
-uint64_t ingot_fabric_read(uint32_t nid, uint32_t cntl, uint32_t upper_32_bits)
-{
-    uint32_t indirect_reg;
-    uint64_t indirect_read;
-    uint64_t results = 0;
-
-    indirect_reg   = INGOT_REG(nid, cntl);
-    indirect_read  = ((uint64_t)indirect_reg << 32);
-    indirect_read |= ((uint64_t)upper_32_bits);
-
-    /* here should prevent optimization */
-    ingot_reg->fab_read = indirect_read;
-    rte_compiler_barrier();
-    results = ingot_reg->fab_read;
-
-    results = results & 0x00000000FFFFFFFF;
-    return results;
-}
-
-void ingot_fabric_write(uint32_t nid, uint32_t cntl, uint32_t data)
-{
-    uint32_t indirect_reg;
-    uint64_t indirect_write;
-
-    indirect_reg    = INGOT_REG(nid, cntl);
-    indirect_write  = ((uint64_t)indirect_reg << 32);
-    indirect_write |= data;
-
-    ingot_reg->fab_write = indirect_write;
-}
 

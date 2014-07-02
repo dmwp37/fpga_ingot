@@ -38,7 +38,7 @@ extern "C" {
 #define MEM_BEGIN               (0)
 
 #define TX_DESCRIPTOR_OFFSET    (RTE_ALIGN(MEM_BEGIN, DMA_ALIGN))
-#define TX_DESCRIPTOR_SIZE      (TX_DESCRIPTOR_COUNT * sizeof(phys_addr_t))
+#define TX_DESCRIPTOR_SIZE      (TX_DESCRIPTOR_COUNT * sizeof(tx_descp_entry_t))
 #define TX_DESCRIPTOR_END       (TX_DESCRIPTOR_OFFSET + TX_DESCRIPTOR_SIZE)
 
 #define TX_MBUF_OFFSET          (RTE_ALIGN(TX_DESCRIPTOR_END, DMA_ALIGN))
@@ -46,7 +46,7 @@ extern "C" {
 #define TX_MBUF_END             (TX_MBUF_OFFSET + TX_MBUF_SIZE)
 
 #define RX_DESCRIPTOR_OFFSET    (RTE_ALIGN(TX_MBUF_END, DMA_ALIGN))
-#define RX_DESCRIPTOR_SIZE      (RX_DESCRIPTOR_COUNT * sizeof(phys_addr_t))
+#define RX_DESCRIPTOR_SIZE      (RX_DESCRIPTOR_COUNT * sizeof(rx_descp_entry_t))
 #define RX_DESCRIPTOR_END       (RX_DESCRIPTOR_OFFSET + RX_DESCRIPTOR_SIZE)
 
 #define RX_MBUF_RING_OFFSET     (RTE_ALIGN(RX_DESCRIPTOR_END, CACHE_LINE_SIZE))
@@ -72,6 +72,18 @@ extern "C" {
 /*==================================================================================================
                                    STRUCTURES AND OTHER TYPEDEFS
 ==================================================================================================*/
+typedef struct
+{
+    uint64_t* bufptr;
+    uint64_t  buflen;
+} tx_descp_entry_t;
+
+typedef struct
+{
+    uint64_t  buflen;
+    uint64_t* bufptr;
+} rx_descp_entry_t;
+
 
 /*==================================================================================================
                                    GLOBAL VARIABLE DECLARATIONS

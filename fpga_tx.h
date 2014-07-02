@@ -1,18 +1,16 @@
-#ifndef _FPGA_DRV_H
-#define _FPGA_DRV_H
+#ifndef _FPGA_TX_H_
+#define _FPGA_TX_H_
 /*==================================================================================================
 
-    Module Name:  fpga_drv.h
+    Module Name:  fpga_tx.h
 
-    General Description: This file provides driver interface for FPGA ingot driver
+    General Description: This file provides driver interface for FPGA tx
 
 ====================================================================================================
 
 ====================================================================================================
                                            INCLUDE FILES
 ==================================================================================================*/
-#include <inttypes.h>
-#include "jspec/ingot.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,17 +31,13 @@ extern "C" {
 /*==================================================================================================
                                    GLOBAL VARIABLE DECLARATIONS
 ==================================================================================================*/
-extern volatile ingot_t* ingot_reg;
 
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-int  fpga_drv_init();
-void fpga_drv_exit();
+void fpga_tx_init();
 
-void fpga_drv_reset(void);
-
-uint64_t fpga_drv_get_version();
+int fpga_tx(const void* buf, size_t len);
 
 #ifdef __cplusplus
 }
@@ -52,5 +46,5 @@ uint64_t fpga_drv_get_version();
 /** @} */
 /** @} */
 
-#endif /* _FPGA_DRV_H  */
+#endif /* _FPGA_TX_H_  */
 

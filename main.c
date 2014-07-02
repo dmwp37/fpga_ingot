@@ -7,6 +7,14 @@
 #include "hp_malloc.h"
 #include "mem_map.h"
 #include "rx_mbuf.h"
+#include "fpga_tx.h"
+
+void test_fpga_tx()
+{
+    fpga_tx_init();
+
+    fpga_tx(global_mem->base, 1024);
+}
 
 void test_rx_mbuf()
 {
@@ -56,6 +64,7 @@ int main()
     test_hp_malloc();
     test_rx_mbuf();
     test_fpga_uio();
+    test_fpga_tx();
     mem_map_exit();
     return 0;
 }
