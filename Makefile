@@ -20,7 +20,7 @@ OBJ_DIR       := obj
 INC_DIRS      := -I.
 
 CFLAGS        := $(INC_DIRS) -g -Wall -Werror -msse2
-LD_FLAGS      := -lgdb_print
+LD_FLAGS      := -lgdb_print -lpthread
 
 # target define
 TARGET        := fpga
