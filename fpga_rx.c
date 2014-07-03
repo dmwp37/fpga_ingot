@@ -111,19 +111,22 @@ int fpga_rx_raw(void* mbuf)
     if (len == 0)
     {
         /* HW processing the descriptor or No Packets Received */
-        return -ENOBUFS;
+        return -EAGAIN;
     }
 
-    /* need to verify if the bufprt was changed by FPGA */
-    p_rx_desc[idx].bufptr = (uint64_t*)rx_mbuf;
+    /* bufprt will also be set to zero by FPGA */
     DBG_PRINT(p_rx_desc[idx]);
 
     /* Copy the data to the buffer provided to us */
 
     memcpy(mbuf, rx_mbuf, len);
+    printf("idx = %d\n", idx);
+    printf("0x%lx\n", *(uint64_t*)(rx_mbuf+sizeof(meta_header_t)));
+    fflush(stdout);
 
-    /*Initialize the buflen of Descp to zero, so that HW will reuse it*/
+    /* Initialize the buflen of Descp to zero, so that HW will reuse it */
     p_rx_desc[idx].buflen = 0;
+    /* p_rx_desc[idx].bufptr = (uint64_t*)rx_mbuf; */
 
     rte_compiler_barrier();
     /*

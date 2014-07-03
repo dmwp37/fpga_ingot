@@ -51,7 +51,12 @@ void test_fpga_uio()
     fpga_tx_init();
     fpga_rx_init();
 
-    fpga_tx(0, global_mem->base, 1024);
+    uint64_t* p = rx_mbuf_mem->base;
+
+    *p = 0xaabbccddeeffdead;
+    fpga_tx(0, p, 1024);
+    *p = 0xcccccccccccccccc;
+    fpga_tx(0, p, 1024);
     fpga_rx(0, NULL, 0);
 
     fpga_drv_exit();
