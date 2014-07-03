@@ -25,9 +25,9 @@ extern "C" {
 ==================================================================================================*/
 #ifdef RTE_ALIGN
 #undef RTE_ALIGN
-#define RTE_ALIGN(x, y)         (x) /*speed up processing */
+#define RTE_ALIGN(x, y) (x) /*speed up processing */
 #endif
-    
+
 #define MBUF_SIZE               (2048) /*each mbuf size must be 2k bytes */
 #define DMA_ALIGN               (256)
 #define TX_DESCRIPTOR_COUNT     (64)
@@ -83,7 +83,6 @@ extern "C" {
                                    GLOBAL VARIABLE DECLARATIONS
 ==================================================================================================*/
 extern hp_t* global_mem;
-extern hp_t* rx_mbuf_mem;
 
 /*==================================================================================================
                                         FUNCTION PROTOTYPES

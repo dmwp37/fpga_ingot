@@ -37,10 +37,14 @@ extern "C" {
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-void  rx_mbuf_init();
+void rx_mbuf_init();
+void rx_mbuf_exit();
+
 void* rx_mbuf_get();
 void  rx_mbuf_put();
 
+void  rx_port_put(int port, void* mbuf);
+void* rx_port_get(int port, int time);
 #ifdef __cplusplus
 }
 #endif

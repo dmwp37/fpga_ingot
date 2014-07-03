@@ -33,8 +33,7 @@
 /*==================================================================================================
                                          GLOBAL VARIABLES
 ==================================================================================================*/
-hp_t* global_mem  = NULL;
-hp_t* rx_mbuf_mem = NULL;
+hp_t* global_mem = NULL;
 
 /*==================================================================================================
                                           LOCAL VARIABLES
@@ -89,8 +88,6 @@ void dump_mem_map()
 /*=============================================================================================*//**
 @brief init global memory map
 
-@param[in] count - how many mbuf the pool contains, each mbuf is a 2k bytes buffer
-
 @return pointer to mbuf_pool
 *//*==============================================================================================*/
 void mem_map_init()
@@ -99,13 +96,6 @@ void mem_map_init()
     if (global_mem == NULL)
     {
         printf("%s(): can't alloc global memory!\n", __func__);
-        exit(1);
-    }
-
-    rx_mbuf_mem = hp_alloc(MBUF_SIZE * RX_MBUF_COUNT);
-    if (rx_mbuf_mem == NULL)
-    {
-        printf("%s(): can't alloc rx mbuf!\n", __func__);
         exit(1);
     }
 }
@@ -119,10 +109,7 @@ void mem_map_init()
 void mem_map_exit()
 {
     hp_free(global_mem);
-    hp_free(rx_mbuf_mem);
-
-    global_mem  = NULL;
-    rx_mbuf_mem = NULL;
+    global_mem = NULL;
 }
 
 /*==================================================================================================
