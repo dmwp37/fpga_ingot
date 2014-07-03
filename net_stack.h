@@ -93,8 +93,19 @@ typedef struct
 {
     meta_header_t   meta;
     higig2_header_t hg2;
-    uint8_t*        buf; /* Remaining 2k-32Bytes; */
+    uint8_t         buf[0]; /* Remaining 2k-32Bytes; */
 } packet_buf_t;
+
+typedef struct
+{
+    uint32_t buf_len;
+} rx_mbuf_header_t;
+
+typedef struct
+{
+    rx_mbuf_header_t rx_head;
+    uint8_t          buf[0];
+} rx_mbuf_t;
 
 /*==================================================================================================
                                    GLOBAL VARIABLE DECLARATIONS

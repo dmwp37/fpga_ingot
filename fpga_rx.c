@@ -12,7 +12,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
 #include "mem_map.h"
+#include "rx_mbuf.h"
 #include "jspec/ingot.h"
 #include "fpga_drv.h"
 #include "fpga_rx.h"
@@ -34,11 +36,12 @@
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
-int fpga_rx_raw(void* mbuf);
+static int fpga_rx_raw(rx_mbuf_t* rx_mbuf);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
 ==================================================================================================*/
+uint32_t rx_len_error = 0;
 
 /*==================================================================================================
                                           LOCAL VARIABLES
@@ -73,6 +76,8 @@ void fpga_rx_init()
 *//*==============================================================================================*/
 int fpga_rx(int port, void* buf, size_t len)
 {
+    int        ret;
+    rx_mbuf_t* mbuf = NULL;
 
     if (port > RX_PORT_NUM)
     {
@@ -80,12 +85,16 @@ int fpga_rx(int port, void* buf, size_t len)
         return -ENOTSUP;
     }
 
-    while (1)
+    if ((mbuf = rx_port_get(port, 0)) == NULL)
     {
-        fpga_rx_raw(global_mem->base + RX_MBUF_OFFSET);
+        return -ENOBUFS;
+    }
+    else
+    {
+        ret = mbuf->rx_head.buf_len;
     }
 
-    return 0;
+    return ret;
 }
 
 /*==================================================================================================
@@ -97,16 +106,20 @@ int fpga_rx(int port, void* buf, size_t len)
 
 @param[in] mbuf - the mbuf to receive packet
 
-@return length of the packet
+@return which port from
 *//*==============================================================================================*/
-int fpga_rx_raw(void* mbuf)
+int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
 {
     static volatile uint32_t rx_head = 0;
 
-    uint32_t          idx       = rx_head & RX_RING_MASK;
-    void*             rx_mbuf   = global_mem->base + RX_MBUF_OFFSET + MBUF_SIZE * idx;
+    uint32_t idx = rx_head & RX_RING_MASK;
+
+    packet_buf_t* packet = (packet_buf_t*)(global_mem->base + RX_MBUF_OFFSET + MBUF_SIZE * idx);
+
     rx_descp_entry_t* p_rx_desc = global_mem->base + RX_DESCRIPTOR_OFFSET;
-    int               len       = p_rx_desc[idx].buflen;
+
+    int len = p_rx_desc[idx].buflen;
+    int port;
 
     if (len == 0)
     {
@@ -114,18 +127,27 @@ int fpga_rx_raw(void* mbuf)
         return -EAGAIN;
     }
 
-    /* bufprt will also be set to zero by FPGA */
-    DBG_PRINT(p_rx_desc[idx]);
+    DBG_PRINT(*packet);
 
-    /* Copy the data to the buffer provided to us */
-
-    memcpy(mbuf, rx_mbuf, len);
-    printf("idx = %d\n", idx);
-    printf("0x%lx\n", *(uint64_t*)(rx_mbuf+sizeof(meta_header_t)));
-    fflush(stdout);
+    if (len < sizeof(packet_buf_t) + 16)
+    {
+        rx_len_error++;
+        return -EAGAIN;
+    }
+    else
+    {
+        /* this is the port info */
+        port = packet->hg2.src_port;
+        /* store the len */
+        len                     -= sizeof(packet_buf_t);
+        rx_mbuf->rx_head.buf_len = len;
+        /* Copy the data to the buffer provided to us */
+        memcpy(rx_mbuf->buf, packet->buf, len);
+    }
 
     /* Initialize the buflen of Descp to zero, so that HW will reuse it */
     p_rx_desc[idx].buflen = 0;
+    /* bufprt will also be set to zero by FPGA */
     /* p_rx_desc[idx].bufptr = (uint64_t*)rx_mbuf; */
 
     rte_compiler_barrier();
@@ -137,6 +159,26 @@ int fpga_rx_raw(void* mbuf)
 
     rx_head++;
 
-    return len;
+    return port;
+}
+
+void fpga_rx_thread()
+{
+    /* the thread sould only run on one cpu with high priority */
+
+    void* mbuf;
+    int   port;
+
+    while (1)
+    {
+        mbuf = rx_mbuf_get();
+        while ((port = fpga_rx_raw(mbuf)) < 0)
+        {
+            /* wait until we got a valid mbuf */
+        }
+
+        /* put the mbuf to a port */
+        rx_port_put(port, mbuf);
+    }
 }
 

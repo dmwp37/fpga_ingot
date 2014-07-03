@@ -10,31 +10,7 @@
 #include "fpga_tx.h"
 #include "fpga_rx.h"
 
-void test_rx_mbuf()
-{
-    rx_mbuf_init();
-
-    void* mbuf = rx_mbuf_get();
-
-    rx_mbuf_put(mbuf);
-}
-
-void test_hp_malloc()
-{
-    hp_t* p_hp = hp_alloc(128 * 1024);
-
-    DBG_PRINT(sizeof(struct rte_ring));
-
-    if (p_hp == NULL)
-    {
-        printf("error: alloc huge pages failed\n");
-        exit(1);
-    }
-
-    DBG_PRINT(*p_hp);
-
-    hp_free(p_hp);
-}
+void fpga_rx_thread();
 
 void test_fpga_uio()
 {
@@ -43,33 +19,33 @@ void test_fpga_uio()
         printf("error: fpga uio init failed\n");
         exit(1);
     }
-
     fpga_drv_reset();
 
     printf("FPGA ingot version is: 0x%" PRIx64 "\n", fpga_drv_get_version());
 
+    mem_map_init();
+    rx_mbuf_init();
     fpga_tx_init();
     fpga_rx_init();
 
-    uint64_t* p = rx_mbuf_mem->base;
+    uint64_t* p = global_mem->base + MEM_END;
 
     *p = 0xaabbccddeeffdead;
     fpga_tx(0, p, 1024);
     *p = 0xcccccccccccccccc;
     fpga_tx(0, p, 1024);
-    fpga_rx(0, NULL, 0);
+    fpga_rx_thread();
 
+    rx_mbuf_exit();
     fpga_drv_exit();
+    mem_map_exit();
 }
 
 int main()
 {
     dump_mem_map();
-    mem_map_init();
-    test_hp_malloc();
-    test_rx_mbuf();
     test_fpga_uio();
-    mem_map_exit();
+
     return 0;
 }
 
