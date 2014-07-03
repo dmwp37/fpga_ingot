@@ -8,6 +8,7 @@
 #include "mem_map.h"
 #include "rx_mbuf.h"
 #include "fpga_tx.h"
+#include "fpga_rx.h"
 
 void test_rx_mbuf()
 {
@@ -48,8 +49,10 @@ void test_fpga_uio()
     printf("FPGA ingot version is: 0x%" PRIx64 "\n", fpga_drv_get_version());
 
     fpga_tx_init();
+    fpga_rx_init();
 
     fpga_tx(0, global_mem->base, 1024);
+    fpga_rx(0, NULL, 0);
 
     fpga_drv_exit();
 }

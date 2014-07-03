@@ -42,7 +42,6 @@ static inline void setup_packet(void* mbuf, int port, const void* buf, size_t le
 /*==================================================================================================
                                           LOCAL VARIABLES
 ==================================================================================================*/
-static volatile uint32_t tx_head = 0;
 
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
@@ -72,6 +71,8 @@ void fpga_tx_init()
 *//*==============================================================================================*/
 int fpga_tx(int port, const void* buf, size_t len)
 {
+    static volatile uint32_t tx_head = 0;
+
     uint32_t          head;
     uint32_t          idx;
     uint32_t          retry     = 0;

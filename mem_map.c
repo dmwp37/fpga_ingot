@@ -64,6 +64,11 @@ void dump_mem_map()
     print_macro(RX_DESCRIPTOR_END);
     printf("\n");
 
+    print_macro(RX_MBUF_OFFSET);
+    print_macro(RX_MBUF_SIZE);
+    print_macro(RX_MBUF_END);
+    printf("\n");
+
     print_macro(RX_MBUF_RING_OFFSET);
     print_macro(RX_MBUF_RING_SIZE);
     print_macro(RX_MBUF_RING_END);

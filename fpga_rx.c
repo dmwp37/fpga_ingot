@@ -16,6 +16,7 @@
 #include "jspec/ingot.h"
 #include "fpga_drv.h"
 #include "fpga_rx.h"
+#include <dbg_dump.h>
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -33,6 +34,7 @@
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
+int fpga_rx_raw(void* mbuf);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
@@ -54,24 +56,34 @@ void fpga_rx_init()
 {
     phys_addr_t phys_base = global_mem->phys_addr;
 
-    ingot_reg->tx_desc_base = phys_base + TX_DESCRIPTOR_OFFSET;
-    ingot_reg->tx_buf_base  = phys_base + TX_MBUF_OFFSET;
+    ingot_reg->rx_desc_base = phys_base + RX_DESCRIPTOR_OFFSET;
+    ingot_reg->rx_buf_base  = phys_base + RX_MBUF_OFFSET;
 
-    memset(global_mem->base + TX_DESCRIPTOR_OFFSET, 0, TX_DESCRIPTOR_SIZE);
+    memset(global_mem->base + RX_DESCRIPTOR_OFFSET, 0, RX_DESCRIPTOR_SIZE);
 }
 
 /*=============================================================================================*//**
 @brief receive a packet from specified port.
 
 @param[in] port - on which port to receive packet
-@param[in] buf  - the buffer contains the packet
+@param[in] buf  - the buffer to receive packet
 @param[in] len  - packet buffer length
 
-@return 0 if success
+@return length we have successfully received
 *//*==============================================================================================*/
 int fpga_rx(int port, void* buf, size_t len)
 {
-   
+
+    if (port > RX_PORT_NUM)
+    {
+        printf("RX specify an invalid port number: #%d\n", port);
+        return -ENOTSUP;
+    }
+
+    while (1)
+    {
+        fpga_rx_raw(global_mem->base + RX_MBUF_OFFSET);
+    }
 
     return 0;
 }
@@ -79,4 +91,49 @@ int fpga_rx(int port, void* buf, size_t len)
 /*==================================================================================================
                                           LOCAL FUNCTIONS
 ==================================================================================================*/
+
+/*=============================================================================================*//**
+@brief receive a packet from FPGA.
+
+@param[in] mbuf - the mbuf to receive packet
+
+@return length of the packet
+*//*==============================================================================================*/
+int fpga_rx_raw(void* mbuf)
+{
+    static volatile uint32_t rx_head = 0;
+
+    uint32_t          idx       = rx_head & RX_RING_MASK;
+    void*             rx_mbuf   = global_mem->base + RX_MBUF_OFFSET + MBUF_SIZE * idx;
+    rx_descp_entry_t* p_rx_desc = global_mem->base + RX_DESCRIPTOR_OFFSET;
+    int               len       = p_rx_desc[idx].buflen;
+
+    if (len == 0)
+    {
+        /* HW processing the descriptor or No Packets Received */
+        return -ENOBUFS;
+    }
+
+    /* need to verify if the bufprt was changed by FPGA */
+    p_rx_desc[idx].bufptr = (uint64_t*)rx_mbuf;
+    DBG_PRINT(p_rx_desc[idx]);
+
+    /* Copy the data to the buffer provided to us */
+
+    memcpy(mbuf, rx_mbuf, len);
+
+    /*Initialize the buflen of Descp to zero, so that HW will reuse it*/
+    p_rx_desc[idx].buflen = 0;
+
+    rte_compiler_barrier();
+    /*
+     * Write the descriptor number to the rx_packet register to
+     * inform the FPGA that the packet has been received and processed.
+     */
+    ingot_reg->rx_packet = idx;
+
+    rx_head++;
+
+    return len;
+}
 
