@@ -87,9 +87,9 @@ extern hp_t* global_mem;
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-void dump_mem_map();
-void mem_map_init();
+int  mem_map_init();
 void mem_map_exit();
+void dump_mem_map();
 
 
 #ifdef __cplusplus

@@ -13,8 +13,8 @@
 #include <errno.h>
 #include "rte_common.h"
 #include "mem_map.h"
-#include "jspec/ingot.h"
 #include "fpga_drv.h"
+#include "fpga_net.h"
 #include "fpga_tx.h"
 
 /*==================================================================================================
@@ -54,8 +54,10 @@ static uint32_t tx_dropped_num = 0;
 
 /*=============================================================================================*//**
 @brief init the FPGA tx driver
+
+@return 0 if success
 *//*==============================================================================================*/
-void fpga_tx_init()
+int fpga_tx_init()
 {
     phys_addr_t phys_base = global_mem->phys_addr;
 
@@ -63,10 +65,12 @@ void fpga_tx_init()
     ingot_reg->tx_buf_base  = phys_base + TX_MBUF_OFFSET;
 
     memset(global_mem->base + TX_DESCRIPTOR_OFFSET, 0, TX_DESCRIPTOR_SIZE);
+
+    return 0;
 }
 
 /*=============================================================================================*//**
-@brief transmit a packet with lock less multi thread support.
+@brief transmit a packet over a port.
 
 @param[in] port - which port to send packet
 @param[in] buf  - the buffer contains the packet
@@ -74,7 +78,7 @@ void fpga_tx_init()
 
 @return 0 if success
 *//*==============================================================================================*/
-int fpga_tx(int port, const void* buf, size_t len)
+int fpga_net_tx(int port, const void* buf, size_t len)
 {
     static volatile uint32_t tx_head = 0;
 

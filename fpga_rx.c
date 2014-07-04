@@ -15,9 +15,10 @@
 #include <pthread.h>
 #include "mem_map.h"
 #include "rx_mbuf.h"
-#include "jspec/ingot.h"
 #include "fpga_drv.h"
+#include "fpga_net.h"
 #include "fpga_rx.h"
+
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -59,8 +60,10 @@ static int       fpga_rx_thread_run = 0;
 
 /*=============================================================================================*//**
 @brief init the FPGA rx driver
+
+@return 0 if success
 *//*==============================================================================================*/
-void fpga_rx_init()
+int fpga_rx_init()
 {
     phys_addr_t phys_base = global_mem->phys_addr;
 
@@ -74,8 +77,10 @@ void fpga_rx_init()
     {
         printf("could not create fpga rx thread!\n");
         fpga_rx_thread_run = 0;
-        exit(1);
+        return -1;
     }
+
+    return 0;
 }
 
 
@@ -101,7 +106,7 @@ void fpga_rx_exit()
 
 @return length we have successfully received
 *//*==============================================================================================*/
-int fpga_rx(int port, void* buf, size_t len)
+int fpga_net_rx(int port, void* buf, size_t len)
 {
     int        ret;
     rx_mbuf_t* mbuf = NULL;
@@ -118,11 +123,10 @@ int fpga_rx(int port, void* buf, size_t len)
     }
 
     ret = mbuf->rx_head.buf_len;
-    /* copy the data to user */
-    memcpy(buf, mbuf->buf, len > ret ? ret : len);
+    ret = (len > ret) ? ret : len;
 
-    printf("rx packet data: 0x%" PRIx64 "\n", *(uint64_t*)mbuf->buf);
-    fflush(stdout);
+    /* copy the data to user */
+    memcpy(buf, mbuf->buf, ret);
 
     /* release the mbuf */
     rx_mbuf_put(mbuf);

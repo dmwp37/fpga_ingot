@@ -1,18 +1,16 @@
-#ifndef _RX_MBUF_H_
-#define _RX_MBUF_H_
+#ifndef _FPGA_NET_H_
+#define _FPGA_NET_H_
 /*==================================================================================================
 
-    Module Name:  rx_mbuf.h
+    Module Name:  fpga_ingot.h
 
-    General Description: This file provides rx mbuf malloc interface
+    General Description: interface for FPGA net driver
 
 ====================================================================================================
 
 ====================================================================================================
                                            INCLUDE FILES
 ==================================================================================================*/
-#include "hp_malloc.h"
-#include "rte_ring.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,14 +35,36 @@ extern "C" {
 /*==================================================================================================
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
-int  rx_mbuf_init();
-void rx_mbuf_exit();
 
-void* rx_mbuf_get();
-void  rx_mbuf_put(void* mbuf);
+/*=============================================================================================*//**
+@brief init fpga net driver.
 
-int   rx_port_put(int port, void* mbuf);
-void* rx_port_get(int port, int time);
+@return 0 if success
+*//*==============================================================================================*/
+int fpga_net_init();
+
+/*=============================================================================================*//**
+@brief receive a packet from specified port.
+
+@param[in] port - on which port to receive packet
+@param[in] buf  - the buffer to receive packet
+@param[in] len  - packet buffer length
+
+@return length we have successfully received
+*//*==============================================================================================*/
+int fpga_net_rx(int port, void* buf, size_t len);
+
+/*=============================================================================================*//**
+@brief transmit a packet over a port.
+
+@param[in] port - which port to send packet
+@param[in] buf  - the buffer contains the packet
+@param[in] len  - packet buffer length
+
+@return 0 if success
+*//*==============================================================================================*/
+int fpga_net_tx(int port, const void* buf, size_t len);
+
 #ifdef __cplusplus
 }
 #endif
@@ -52,5 +72,5 @@ void* rx_port_get(int port, int time);
 /** @} */
 /** @} */
 
-#endif /* _RX_MBUF_H_  */
+#endif /* _FPGA_NET_H_  */
 

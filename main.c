@@ -1,53 +1,40 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "uio.h"
 #include "fpga_drv.h"
-#include "hp_malloc.h"
-#include "mem_map.h"
-#include "rx_mbuf.h"
-#include "fpga_tx.h"
-#include "fpga_rx.h"
+#include "fpga_net.h"
 
-void test_fpga_uio()
+
+void test_fpga_net()
 {
-    if (fpga_drv_init() < 0)
+    if (fpga_net_init() != 0)
     {
-        printf("error: fpga uio init failed\n");
-        exit(1);
+        printf("fpga net driver init failed.\n");
+        return;
     }
-    fpga_drv_reset();
 
+    fpga_drv_reset();
     printf("FPGA ingot version is: 0x%" PRIx64 "\n", fpga_drv_get_version());
 
-    mem_map_init();
-    rx_mbuf_init();
-    fpga_rx_init();
-    fpga_tx_init();
+    uint64_t tx_data[128];
+    uint64_t rx_data[128];
 
-    uint64_t* p = global_mem->base + MEM_END;
+    tx_data[0] = 0xaabbccddeeffdead;
+    fpga_net_tx(0, tx_data, sizeof(tx_data));
+    tx_data[0] = 0xcccccccccccccccc;
+    fpga_net_tx(0, tx_data, sizeof(tx_data));
 
-    *p = 0xaabbccddeeffdead;
-    fpga_tx(0, p, 1024);
-    *p = 0xcccccccccccccccc;
-    fpga_tx(0, p, 1024);
-
-    p += MBUF_SIZE;
-
-    fpga_rx(0, p, 1024);
-    fpga_rx(0, p, 1024);
-    fpga_rx(0, p, 1024);
-
-    fpga_rx_exit();
-    rx_mbuf_exit();
-    fpga_drv_exit();
-    mem_map_exit();
+    fpga_net_rx(0, rx_data, sizeof(rx_data));
+    printf("rx packet data: 0x%" PRIx64 "\n", rx_data[0]);
+    fpga_net_rx(0, rx_data, sizeof(rx_data));
+    printf("rx packet data: 0x%" PRIx64 "\n", rx_data[0]);
+    fpga_net_rx(0, rx_data, sizeof(rx_data));
+    printf("rx packet data: 0x%" PRIx64 "\n", rx_data[0]);
 }
 
 int main()
 {
-    dump_mem_map();
-    test_fpga_uio();
+    test_fpga_net();
 
     return 0;
 }

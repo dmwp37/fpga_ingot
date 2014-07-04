@@ -119,6 +119,11 @@ init_err:
 *//*==============================================================================================*/
 void uio_exit(uio_t* uio)
 {
+    if (uio == NULL)
+    {
+        return;
+    }
+
     if (uio->base != NULL)
     {
         munmap(uio->base, uio->mmap_size);

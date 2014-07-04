@@ -88,16 +88,18 @@ void dump_mem_map()
 /*=============================================================================================*//**
 @brief init global memory map
 
-@return pointer to mbuf_pool
+@return 0 if success
 *//*==============================================================================================*/
-void mem_map_init()
+int mem_map_init()
 {
     global_mem = hp_alloc(TOTAL_MEM_SIZE);
     if (global_mem == NULL)
     {
         printf("%s(): can't alloc global memory!\n", __func__);
-        exit(1);
+        return -1;
     }
+
+    return 0;
 }
 
 

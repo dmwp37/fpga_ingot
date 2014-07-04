@@ -56,10 +56,13 @@ static rx_port_ring_t rx_port_ring[RX_PORT_NUM];
 
 /*=============================================================================================*//**
 @brief init rx mbuf rte_rings
+
+@return 0 if success
 *//*==============================================================================================*/
-void rx_mbuf_init()
+int rx_mbuf_init()
 {
     int   i;
+    int   ret = 0;
     void* p_mbuf;
 
     rx_mbuf_ring = global_mem->base + RX_MBUF_RING_OFFSET;
@@ -68,7 +71,7 @@ void rx_mbuf_init()
     if (rx_mbuf_mem == NULL)
     {
         printf("%s(): can't alloc rx mbuf!\n", __func__);
-        exit(1);
+        return -1;
     }
 
     rte_ring_init(rx_mbuf_ring, RX_MBUF_COUNT);
@@ -90,8 +93,8 @@ void rx_mbuf_init()
         /* init the semaphore for blocking read */
         if (sem_init(&rx_port_ring[i].sem, 0, 0) != 0)
         {
+            ret = -1;
             printf("Failed to init semphore for rx port, errno=%d(%m)", errno);
-            exit(1);
         }
 
         rx_port_ring[i].ring = port_ring;
@@ -99,6 +102,8 @@ void rx_mbuf_init()
 
         port_ring += RX_PORT_RING_REAL_SIZE;
     }
+
+    return ret;
 }
 
 /*=============================================================================================*//**
