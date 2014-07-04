@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <semaphore.h>
 #include <errno.h>
-#include <sys/time.h>
+#include <time.h>
 #include "mem_map.h"
 #include "rx_mbuf.h"
 
@@ -214,27 +214,7 @@ void* rx_port_get(int port, int time)
 *//*==============================================================================================*/
 int wait_sem(sem_t* sem, int time_out)
 {
-    int             status = 0;
-    struct timeval  time_of_day;
-    struct timespec timeout_time;
-
-    if (time_out > 0)
-    {
-        if (gettimeofday(&time_of_day, NULL) != 0)
-        {
-            printf("Failed to get time of day, errno=%d(%m)\n", errno);
-            return -1;
-        }
-        else
-        {
-            /* Add the timeout time to the time of day to get absolute timeout time */
-            timeout_time.tv_sec  = time_of_day.tv_sec;
-            timeout_time.tv_nsec = time_of_day.tv_usec * 1000;
-
-            timeout_time.tv_sec  += time_out / 1000;
-            timeout_time.tv_nsec += (time_out % 1000) * 1000000;
-        }
-    }
+    int status = 0;
 
     if (time_out < 0)
     {
@@ -246,6 +226,21 @@ int wait_sem(sem_t* sem, int time_out)
     }
     else
     {
+        struct timespec timeout_time;
+
+        if (clock_gettime(CLOCK_REALTIME, &timeout_time) != 0)
+        {
+            printf("Failed to call clock_gettime(), errno=%d(%m)\n", errno);
+            return -1;
+        }
+        else
+        {
+            /* Add the timeout time to the time of day to get absolute timeout time */
+            timeout_time.tv_sec  += time_out / 1000;
+            timeout_time.tv_nsec += (time_out % 1000) * 1000000;
+            timeout_time.tv_sec  += timeout_time.tv_nsec / 1000000000;
+            timeout_time.tv_nsec %= 1000000000;
+        }
         status = sem_timedwait(sem, &timeout_time);
     }
 

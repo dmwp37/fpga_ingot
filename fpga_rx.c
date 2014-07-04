@@ -107,28 +107,27 @@ int fpga_rx(int port, void* buf, size_t len)
     int        ret;
     rx_mbuf_t* mbuf = NULL;
 
-    if (port > RX_PORT_NUM)
+    if (port >= RX_PORT_NUM)
     {
         printf("RX specify an invalid port number: #%d\n", port);
         return -ENOTSUP;
     }
 
-    if ((mbuf = rx_port_get(port, 0)) == NULL)
+    if ((mbuf = rx_port_get(port, 1500)) == NULL)
     {
         return -ENOBUFS;
     }
-    else
-    {
-        ret = mbuf->rx_head.buf_len;
-        /* copy the data to user */
-        memcpy(buf, mbuf->buf, len > ret ? ret : len);
 
-        printf("rx packet data: 0x%" PRIx64 "\n", *(uint64_t*)mbuf->buf);
-        fflush(stdout);
+    ret = mbuf->rx_head.buf_len;
+    /* copy the data to user */
+    memcpy(buf, mbuf->buf, len > ret ? ret : len);
 
-        /* release the mbuf */
-        rx_mbuf_put(mbuf);
-    }
+    printf("rx packet data: 0x%" PRIx64 "\n", *(uint64_t*)mbuf->buf);
+    fflush(stdout);
+
+    /* release the mbuf */
+    rx_mbuf_put(mbuf);
+
 
     return ret;
 }

@@ -23,8 +23,8 @@ void test_fpga_uio()
 
     mem_map_init();
     rx_mbuf_init();
-    fpga_tx_init();
     fpga_rx_init();
+    fpga_tx_init();
 
     uint64_t* p = global_mem->base + MEM_END;
 
