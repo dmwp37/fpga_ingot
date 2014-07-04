@@ -198,6 +198,8 @@ void fpga_rx_thread()
 
         /* print the data */
         DBG_PRINT(*mbuf);
+        printf("rx packet data: 0x%" PRIx64 "\n", *(uint64_t*)mbuf->buf);
+        fflush(stdout);
 
         /* put the mbuf to a port */
         if (unlikely(rx_port_put(port, mbuf) < 0))

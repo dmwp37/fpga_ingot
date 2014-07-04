@@ -60,7 +60,7 @@ static rx_port_ring_t rx_port_ring[RX_PORT_NUM];
 void rx_mbuf_init()
 {
     int   i;
-    void* p_mbuf = rx_mbuf_mem->base;
+    void* p_mbuf;
 
     rx_mbuf_ring = global_mem->base + RX_MBUF_RING_OFFSET;
 
@@ -73,6 +73,7 @@ void rx_mbuf_init()
 
     rte_ring_init(rx_mbuf_ring, RX_MBUF_COUNT);
 
+    p_mbuf = rx_mbuf_mem->base;
     for (i = 0; i < RX_MBUF_COUNT; i++, p_mbuf += MBUF_SIZE)
     {
         rx_mbuf_ring->ring[i] = p_mbuf;
