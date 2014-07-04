@@ -36,7 +36,8 @@
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
-static int fpga_rx_raw(rx_mbuf_t* rx_mbuf);
+static int   fpga_rx_raw(rx_mbuf_t* rx_mbuf);
+static void* fpga_rx_thread_func(void* arg);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
@@ -49,6 +50,9 @@ static uint32_t rx_error_num   = 0;
                                           LOCAL VARIABLES
 ==================================================================================================*/
 static volatile uint32_t tx_head = 0;
+
+static pthread_t fpga_rx_thread;
+static int       fpga_rx_thread_run = 0;
 
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
@@ -65,6 +69,28 @@ void fpga_rx_init()
     ingot_reg->rx_buf_base  = phys_base + RX_MBUF_OFFSET;
 
     memset(global_mem->base + RX_DESCRIPTOR_OFFSET, 0, RX_DESCRIPTOR_SIZE);
+
+    fpga_rx_thread_run = 1;
+    if (pthread_create(&fpga_rx_thread, NULL, fpga_rx_thread_func, NULL) != 0)
+    {
+        printf("could not create fpga rx thread!\n");
+        fpga_rx_thread_run = 0;
+        exit(1);
+    }
+}
+
+
+/*=============================================================================================*//**
+@brief exit the FPGA rx driver
+*//*==============================================================================================*/
+void fpga_rx_exit()
+{
+    if (fpga_rx_thread_run != 0)
+    {
+        /* stop the rx thread */
+        fpga_rx_thread_run = 0;
+        pthread_join(fpga_rx_thread, NULL);
+    }
 }
 
 /*=============================================================================================*//**
@@ -94,6 +120,14 @@ int fpga_rx(int port, void* buf, size_t len)
     else
     {
         ret = mbuf->rx_head.buf_len;
+        /* copy the data to user */
+        memcpy(buf, mbuf->buf, len > ret ? ret : len);
+
+        printf("rx packet data: 0x%" PRIx64 "\n", *(uint64_t*)mbuf->buf);
+        fflush(stdout);
+
+        /* release the mbuf */
+        rx_mbuf_put(mbuf);
     }
 
     return ret;
@@ -169,14 +203,14 @@ int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
     return port;
 }
 
-void fpga_rx_thread()
+void* fpga_rx_thread_func(void* arg)
 {
     /* the thread sould only run on one cpu with high priority */
 
     rx_mbuf_t* mbuf;
     int        port;
 
-    while (1)
+    while (fpga_rx_thread_run)
     {
         do
         {
@@ -198,8 +232,6 @@ void fpga_rx_thread()
 
         /* print the data */
         DBG_PRINT(*mbuf);
-        printf("rx packet data: 0x%" PRIx64 "\n", *(uint64_t*)mbuf->buf);
-        fflush(stdout);
 
         /* put the mbuf to a port */
         if (unlikely(rx_port_put(port, mbuf) < 0))
@@ -207,5 +239,7 @@ void fpga_rx_thread()
             rx_dropped_num++;
         }
     }
+
+    return NULL;
 }
 

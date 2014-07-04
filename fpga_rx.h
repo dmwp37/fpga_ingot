@@ -36,6 +36,7 @@ extern "C" {
                                         FUNCTION PROTOTYPES
 ==================================================================================================*/
 void fpga_rx_init();
+void fpga_rx_exit();
 
 int fpga_rx(int port, void* buf, size_t len);
 

@@ -10,8 +10,6 @@
 #include "fpga_tx.h"
 #include "fpga_rx.h"
 
-void fpga_rx_thread();
-
 void test_fpga_uio()
 {
     if (fpga_drv_init() < 0)
@@ -34,8 +32,13 @@ void test_fpga_uio()
     fpga_tx(0, p, 1024);
     *p = 0xcccccccccccccccc;
     fpga_tx(0, p, 1024);
-    fpga_rx_thread();
 
+    p += MBUF_SIZE;
+
+    fpga_rx(0, p, 1024);
+    fpga_rx(0, p, 1024);
+
+    fpga_rx_exit();
     rx_mbuf_exit();
     fpga_drv_exit();
     mem_map_exit();

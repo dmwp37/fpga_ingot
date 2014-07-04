@@ -127,7 +127,7 @@ void* rx_mbuf_get()
     void* mbuf = NULL;
 
     /* this is sc dequeue for the rx thread, not mc */
-    if (rte_ring_sc_dequeue(rx_mbuf_ring, &mbuf) != 0)
+    if (unlikely(rte_ring_sc_dequeue(rx_mbuf_ring, &mbuf) != 0))
     {
         printf("%s(): no mbuf available in the mbuf pool!\n", __func__);
         return NULL;
@@ -144,7 +144,7 @@ void* rx_mbuf_get()
 *//*==============================================================================================*/
 void rx_mbuf_put(void* mbuf)
 {
-    if (rte_ring_mp_enqueue(rx_mbuf_ring, mbuf) != 0)
+    if (unlikely(rte_ring_mp_enqueue(rx_mbuf_ring, mbuf) != 0))
     {
         printf("%s(): can't enqueue mbuf to the mbuf pool!\n", __func__);
     }
@@ -160,7 +160,7 @@ void rx_mbuf_put(void* mbuf)
 *//*==============================================================================================*/
 int rx_port_put(int port, void* mbuf)
 {
-    if (rte_ring_sp_enqueue(rx_port_ring[port].ring, mbuf) != 0)
+    if (unlikely(rte_ring_sp_enqueue(rx_port_ring[port].ring, mbuf) != 0))
     {
         printf("%s(): can't enqueue mbuf to the port[%d] ring!\n", __func__, port);
         return -1;
@@ -185,7 +185,7 @@ void* rx_port_get(int port, int time)
 
     if (wait_sem(&rx_port_ring[port].sem, time) == 0)
     {
-        if (rte_ring_mc_dequeue(rx_port_ring[port].ring, &mbuf) != 0)
+        if (unlikely(rte_ring_mc_dequeue(rx_port_ring[port].ring, &mbuf) != 0))
         {
             printf("%s(): no mbuf available in the port[%d] mbuf !\n", __func__, port);
             printf("%s(): sem sync wrong!\n", __func__);
