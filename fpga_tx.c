@@ -33,7 +33,7 @@
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
-static inline void setup_packet(void* mbuf, int port, const void* buf, size_t len);
+static inline void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
@@ -42,6 +42,11 @@ static inline void setup_packet(void* mbuf, int port, const void* buf, size_t le
 /*==================================================================================================
                                           LOCAL VARIABLES
 ==================================================================================================*/
+static int tx_global_queue = TX_QUEUE_FPGA_LOOP;
+
+static uint64_t tx_packet_num  = 0;
+static uint32_t tx_dropped_num = 0;
+/* static uint32_t tx_error_num = 0; */
 
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
@@ -76,11 +81,12 @@ int fpga_tx(int port, const void* buf, size_t len)
     uint32_t          head;
     uint32_t          idx;
     uint32_t          retry     = 0;
-    void*             tx_mbuf   = global_mem->base + TX_MBUF_OFFSET;
     tx_descp_entry_t* p_tx_desc = global_mem->base + TX_DESCRIPTOR_OFFSET;
     uint64_t          reg       = 0;
     int               success;
-    /* move tx_head atomically */
+
+    tx_packet_num++;
+
     do
     {
         head = tx_head;
@@ -92,6 +98,7 @@ int fpga_tx(int port, const void* buf, size_t len)
             if (retry > 10000000)
             {
                 printf("TX stuck while processing TX Descp #%d\n", idx);
+                tx_dropped_num++;
                 return -ENOBUFS;
             }
             retry++;
@@ -102,15 +109,15 @@ int fpga_tx(int port, const void* buf, size_t len)
     } while (unlikely(success == 0));
 
     /* prepare mbuf data to tx */
-    tx_mbuf += MBUF_SIZE * idx;
-    setup_packet(tx_mbuf, port, buf, len);
-    p_tx_desc[idx].bufptr = (uint64_t*)tx_mbuf;
-
+    packet_buf_t* packet = (packet_buf_t*)(global_mem->base + TX_MBUF_OFFSET + MBUF_SIZE * idx);
+    setup_packet(packet, port, buf, len);
+    p_tx_desc[idx].bufptr = (uint64_t*)packet;
+    /* add the header length to packet */
+    len += sizeof(packet_buf_t);
 
     /* prepare the register */
-    reg = INGOT_REGLB_LENGTH_SET(reg, len);
-    /* reg = INGOT_REGLB_QUEUE_SET(reg,TX_QUEUE); */
-    reg  = INGOT_REGLB_QUEUE_SET(reg, port);
+    reg  = INGOT_REGLB_LENGTH_SET(reg, len);
+    reg  = INGOT_REGLB_QUEUE_SET(reg, tx_global_queue);
     reg |= idx;
 
     rte_compiler_barrier();
@@ -125,19 +132,25 @@ int fpga_tx(int port, const void* buf, size_t len)
                                           LOCAL FUNCTIONS
 ==================================================================================================*/
 
-void setup_packet(void* mbuf, int port, const void* buf, size_t len)
+void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
 {
-    meta_header_t meta = { 0 };
-    meta.transmit_queue = port;
+    /* init the header */
+    memset(packet, 0, sizeof(packet_buf_t));
 
-    /* add meta header */
-    memcpy(mbuf, &meta, sizeof(meta));
-    mbuf += sizeof(meta_header_t);
+    /* meta header */
+    packet->meta.transmit_queue = tx_global_queue;
 
-    /* add higig2 header */
-    /* m_buf += sizeof(higig2_header_t); */
+    /* higig2 header */
+    packet->hg2.start      = 0xfb;
+    packet->hg2.tc         = 0x01;
+    packet->hg2.src_mod    = 0x01;
+    packet->hg2.dst_mod    = 0x00;
+    packet->hg2.dst_port   = port;
+    packet->hg2.lbid       = 0x09;
+    packet->hg2.vlan_id_lo = 0x01;
+    packet->hg2.opcode     = 0x01;
 
     /* copy rest data to the tx mbuf */
-    memcpy(mbuf, buf, len);
+    memcpy(packet->buf, buf, len);
 }
 

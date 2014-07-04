@@ -41,7 +41,9 @@ static int fpga_rx_raw(rx_mbuf_t* rx_mbuf);
 /*==================================================================================================
                                          GLOBAL VARIABLES
 ==================================================================================================*/
-uint32_t rx_len_error = 0;
+static uint64_t rx_packet_num  = 0;
+static uint32_t rx_dropped_num = 0;
+static uint32_t rx_error_num   = 0;
 
 /*==================================================================================================
                                           LOCAL VARIABLES
@@ -118,7 +120,7 @@ int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
 
     rx_descp_entry_t* p_rx_desc = global_mem->base + RX_DESCRIPTOR_OFFSET;
 
-    int len = p_rx_desc[idx].buflen;
+    int len = p_rx_desc[idx].buflen; /* total packet length */
     int port;
 
     if (len == 0)
@@ -131,18 +133,23 @@ int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
 
     if (len < sizeof(packet_buf_t) + 16)
     {
-        rx_len_error++;
+        rx_error_num++;
         return -EAGAIN;
     }
     else
     {
         /* this is the port info */
         port = packet->hg2.src_port;
+        /* stript the higig header */
+        len -= sizeof(packet_buf_t);
         /* store the len */
-        len                     -= sizeof(packet_buf_t);
         rx_mbuf->rx_head.buf_len = len;
+        /* set the rx index */
+        rx_mbuf->rx_head.rx_index = rx_packet_num;
         /* Copy the data to the buffer provided to us */
         memcpy(rx_mbuf->buf, packet->buf, len);
+
+        rx_packet_num++;
     }
 
     /* Initialize the buflen of Descp to zero, so that HW will reuse it */
@@ -166,19 +173,37 @@ void fpga_rx_thread()
 {
     /* the thread sould only run on one cpu with high priority */
 
-    void* mbuf;
-    int   port;
+    rx_mbuf_t* mbuf;
+    int        port;
 
     while (1)
     {
-        mbuf = rx_mbuf_get();
-        while ((port = fpga_rx_raw(mbuf)) < 0)
+        do
         {
-            /* wait until we got a valid mbuf */
-        }
+            mbuf = rx_mbuf_get();
+        } while (unlikely(mbuf == NULL));
+
+        do
+        {
+            port = fpga_rx_raw(mbuf);
+
+            if (port >= RX_PORT_NUM)
+            {
+                printf("rx packet port invalid, port=%d (discarded)", port);
+                fflush(stdout);
+                port = -1;
+            }
+
+        } while (port < 0); /* wait until we got a valid mbuf */
+
+        /* print the data */
+        DBG_PRINT(*mbuf);
 
         /* put the mbuf to a port */
-        rx_port_put(port, mbuf);
+        if (unlikely(rx_port_put(port, mbuf) < 0))
+        {
+            rx_dropped_num++;
+        }
     }
 }
 

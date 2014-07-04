@@ -99,6 +99,8 @@ typedef struct
 typedef struct
 {
     uint32_t buf_len;
+    uint32_t reserved;
+    uint64_t rx_index;
 } rx_mbuf_header_t;
 
 typedef struct

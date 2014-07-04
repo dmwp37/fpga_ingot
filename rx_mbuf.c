@@ -154,17 +154,20 @@ void rx_mbuf_put(void* mbuf)
 
 @param[in] port - port number
 @param[in] mbuf - pointer to one mbuf
+
+@return 0 if success
 *//*==============================================================================================*/
-void rx_port_put(int port, void* mbuf)
+int rx_port_put(int port, void* mbuf)
 {
     if (rte_ring_sp_enqueue(rx_port_ring[port].ring, mbuf) != 0)
     {
         printf("%s(): can't enqueue mbuf to the port[%d] ring!\n", __func__, port);
+        return -1;
     }
-    else
-    {
-        sem_post(&rx_port_ring[port].sem);
-    }
+
+    sem_post(&rx_port_ring[port].sem);
+
+    return 0;
 }
 
 /*=============================================================================================*//**
