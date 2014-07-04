@@ -18,7 +18,6 @@
 #include "jspec/ingot.h"
 #include "fpga_drv.h"
 #include "fpga_rx.h"
-#include <dbg_dump.h>
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -162,8 +161,6 @@ int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
         return -EAGAIN;
     }
 
-    DBG_PRINT(*packet);
-
     if (len < sizeof(packet_buf_t) + 16)
     {
         rx_error_num++;
@@ -241,9 +238,6 @@ void* fpga_rx_thread_func(void* arg)
             }
 
         } while (port < 0); /* wait until we got a valid mbuf */
-
-        /* print the data */
-        DBG_PRINT(*mbuf);
 
         /* put the mbuf to a port */
         if (unlikely(rx_port_put(port, mbuf) < 0))

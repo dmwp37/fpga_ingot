@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dbg_dump.h>
 #include "uio.h"
 #include "fpga_drv.h"
 #include "hp_malloc.h"
@@ -35,6 +34,7 @@ void test_fpga_uio()
 
     p += MBUF_SIZE;
 
+    fpga_rx(0, p, 1024);
     fpga_rx(0, p, 1024);
     fpga_rx(0, p, 1024);
 
