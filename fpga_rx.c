@@ -203,6 +203,9 @@ int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
     return port;
 }
 
+/*=============================================================================================*//**
+@brief fpga rx thread function
+*//*==============================================================================================*/
 void* fpga_rx_thread_func(void* arg)
 {
     /* the thread sould only run on one cpu with high priority */
@@ -214,11 +217,21 @@ void* fpga_rx_thread_func(void* arg)
     {
         do
         {
+            if (unlikely(fpga_rx_thread_run == 0))
+            {
+                return NULL;
+            }
+
             mbuf = rx_mbuf_get();
         } while (unlikely(mbuf == NULL));
 
         do
         {
+            if (unlikely(fpga_rx_thread_run == 0))
+            {
+                return NULL;
+            }
+
             port = fpga_rx_raw(mbuf);
 
             if (port >= RX_PORT_NUM)
