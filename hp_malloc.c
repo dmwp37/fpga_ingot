@@ -28,11 +28,11 @@
                                            LOCAL MACROS
 ==================================================================================================*/
 #ifndef MAP_POPULATE
-# define MAP_POPULATE 0 /* hack for cygwin build */
+# define MAP_POPULATE 0x08000 /* hack for cygwin build */
 #endif
 
 #ifndef MAP_HUGETLB
-# define MAP_HUGETLB 0
+# define MAP_HUGETLB 0x40000
 #endif
 
 #define BAD_PHYS_ADDR ((phys_addr_t)-1)

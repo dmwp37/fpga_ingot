@@ -18,7 +18,7 @@
 #include "fpga_drv.h"
 #include "fpga_net.h"
 #include "fpga_rx.h"
-
+#include <gdb_print.h>
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -165,6 +165,8 @@ int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
         return -EAGAIN;
     }
 
+    GDB_PRINT(*packet);
+
     if (len < sizeof(packet_buf_t) + 16)
     {
         rx_error_num++;
@@ -242,6 +244,9 @@ void* fpga_rx_thread_func(void* arg)
             }
 
         } while (port < 0); /* wait until we got a valid mbuf */
+
+        /* print the data */
+        GDB_PRINT(*mbuf);
 
         /* put the mbuf to a port */
         if (unlikely(rx_port_put(port, mbuf) < 0))

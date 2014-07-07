@@ -73,8 +73,8 @@ int fpga_net_init()
 void fpga_net_exit()
 {
     fpga_rx_exit();
-    rx_mbuf_exit();
     fpga_drv_exit();
+    rx_mbuf_exit();
     mem_map_exit();
 }
 

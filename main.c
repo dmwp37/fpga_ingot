@@ -13,7 +13,6 @@ void test_fpga_net()
         return;
     }
 
-    fpga_drv_reset();
     printf("FPGA ingot version is: 0x%" PRIx64 "\n", fpga_drv_get_version());
 
     uint64_t tx_data[128];

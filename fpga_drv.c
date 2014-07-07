@@ -60,13 +60,15 @@ int fpga_drv_init()
 {
     fpga_drv_uio = uio_init(FPGA_INGOT_DRIVER);
 
-    if (fpga_drv_uio != NULL)
+    if (fpga_drv_uio == NULL)
     {
-        ingot_reg = (ingot_t*)fpga_drv_uio->base;
-        return 0;
+        printf("%s(): uio_init failed\n", __func__);
+        return -1;
     }
 
-    return -1;
+    ingot_reg = (ingot_t*)fpga_drv_uio->base;
+    fpga_drv_reset();
+    return 0;
 }
 
 /*=============================================================================================*//**
