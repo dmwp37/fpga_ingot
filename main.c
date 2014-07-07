@@ -18,17 +18,19 @@ void test_fpga_net()
     uint64_t tx_data[128];
     uint64_t rx_data[128];
 
-    tx_data[0] = 0xaabbccddeeffdead;
-    fpga_net_tx(0, tx_data, sizeof(tx_data));
-    tx_data[0] = 0xcccccccccccccccc;
-    fpga_net_tx(0, tx_data, sizeof(tx_data));
+    fpga_net_port_t port;
+    for (port = 0; port < FPGA_PORT_MAX; port++)
+    {
+        tx_data[0] = 0xaabbccddeeffdead;
+        fpga_net_tx(port, tx_data, sizeof(tx_data));
+        tx_data[0] = 0xcccccccccccccccc;
+        fpga_net_tx(port, tx_data, sizeof(tx_data));
 
-    fpga_net_rx(0, rx_data, sizeof(rx_data));
-    printf("rx packet data: 0x%" PRIx64 "\n", rx_data[0]);
-    fpga_net_rx(0, rx_data, sizeof(rx_data));
-    printf("rx packet data: 0x%" PRIx64 "\n", rx_data[0]);
-    fpga_net_rx(0, rx_data, sizeof(rx_data));
-    printf("rx packet data: 0x%" PRIx64 "\n", rx_data[0]);
+        fpga_net_rx(port, rx_data, sizeof(rx_data));
+        printf("port[%d] rx packet data: 0x%" PRIx64 "\n", port, rx_data[0]);
+        fpga_net_rx(port, rx_data, sizeof(rx_data));
+        printf("port[%d] rx packet data: 0x%" PRIx64 "\n", port, rx_data[0]);
+    }
 }
 
 int main()
