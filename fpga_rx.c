@@ -106,12 +106,12 @@ void fpga_rx_exit()
 
 @return length we have successfully received
 *//*==============================================================================================*/
-int fpga_net_rx(int port, void* buf, size_t len)
+int fpga_net_rx(fpga_net_port_t port, void* buf, size_t len)
 {
     int           ret;
     packet_buf_t* mbuf = NULL;
 
-    if (port >= RX_PORT_NUM)
+    if (port >= FPGA_PORT_MAX)
     {
         printf("RX specify an invalid port number: #%d\n", port);
         return -ENOTSUP;

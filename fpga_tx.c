@@ -97,7 +97,7 @@ int fpga_net_config(tx_queue_t queue)
 
 @return 0 if success
 *//*==============================================================================================*/
-int fpga_net_tx(int port, const void* buf, size_t len)
+int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 {
     static volatile uint32_t tx_head = 0;
 
@@ -107,6 +107,12 @@ int fpga_net_tx(int port, const void* buf, size_t len)
     tx_descp_entry_t* p_tx_desc = global_mem->base + TX_DESCRIPTOR_OFFSET;
     uint64_t          reg       = 0;
     int               success;
+
+    if (port >= FPGA_PORT_MAX)
+    {
+        printf("TX specify an invalid port number: #%d\n", port);
+        return -ENOTSUP;
+    }
 
     tx_packet_num++;
 

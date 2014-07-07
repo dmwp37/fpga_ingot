@@ -32,6 +32,32 @@ typedef enum
     TX_QUEUE_MAX
 } tx_queue_t;
 
+typedef enum
+{
+    GE_0 = 0,
+    GE_1,
+    GE_2,
+    GE_3,
+    GE_4,
+    GE_5,
+    GE_6,
+    GE_7,
+    GE_8,
+    GE_9,
+    GE_10,
+    GE_11,
+    GE_12,
+    GE_13,
+    GE_14,
+    GE_15,
+    XE_0,
+    XE_1,
+    XE_2,
+    XE_3,
+    /* must be equal to RX_PORT_NUM */
+    FPGA_PORT_MAX
+} fpga_net_port_t;
+
 /*==================================================================================================
                                    STRUCTURES AND OTHER TYPEDEFS
 ==================================================================================================*/
@@ -69,7 +95,7 @@ int fpga_net_config(tx_queue_t queue);
 
 @return length we have successfully received
 *//*==============================================================================================*/
-int fpga_net_rx(int port, void* buf, size_t len);
+int fpga_net_rx(fpga_net_port_t port, void* buf, size_t len);
 
 /*=============================================================================================*//**
 @brief transmit a packet over a port.
@@ -80,7 +106,7 @@ int fpga_net_rx(int port, void* buf, size_t len);
 
 @return 0 if success
 *//*==============================================================================================*/
-int fpga_net_tx(int port, const void* buf, size_t len);
+int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len);
 
 #ifdef __cplusplus
 }

@@ -15,6 +15,7 @@
 #include "net_stack.h"
 #include "hp_malloc.h"
 #include "rte_ring.h"
+#include "fpga_net.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,7 +35,7 @@ extern "C" {
 #define RX_DESCRIPTOR_COUNT     (64)
 #define TX_MBUF_COUNT           (TX_DESCRIPTOR_COUNT)
 #define RX_PORT_MBUF_COUNT      (4096) /* 4k mbuf (8M) for each rx port */
-#define RX_PORT_NUM             (20)
+#define RX_PORT_NUM             (FPGA_PORT_MAX)
 #define RX_MBUF_COUNT           (RX_PORT_MBUF_COUNT * 16) /* must be power of 2 (128M bytes) */
 #define RTE_RING_SIZE(count)    (sizeof(struct rte_ring) + count * sizeof(void*))
 /* each memory zone should define offset, size, and end */
