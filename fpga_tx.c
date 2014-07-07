@@ -70,6 +70,25 @@ int fpga_tx_init()
 }
 
 /*=============================================================================================*//**
+@brief config fpga net driver
+
+@param[in] queue - which FPGA tx queue to use
+                                                                                                  *
+@return 0 if success
+*//*==============================================================================================*/
+int fpga_net_config(tx_queue_t queue)
+{
+    if (queue > TX_QUEUE_MAX)
+    {
+        printf("%s(): unsupported tx queue: %d", __func__, queue);
+        return -1;
+    }
+
+    tx_global_queue = queue;
+    return 0;
+}
+
+/*=============================================================================================*//**
 @brief transmit a packet over a port.
 
 @param[in] port - which port to send packet
