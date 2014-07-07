@@ -40,11 +40,22 @@ typedef struct
     volatile uint64_t* bufptr;
 } rx_descp_entry_t;
 
-typedef struct
+typedef union
 {
-    uint8_t transmit_queue;
-    uint8_t rsvd_1[15];
+    struct
+    {
+        uint8_t transmit_queue;
+        uint8_t rsvd_1[15];
+    } tx;
+
+    struct
+    {
+        uint32_t buf_len;
+        uint32_t reserved;
+        uint64_t rx_index;
+    } rx;
 } meta_header_t;
+
 
 typedef struct
 {
@@ -95,19 +106,6 @@ typedef struct
     higig2_header_t hg2;
     uint8_t         buf[0]; /* Remaining 2k-32Bytes; */
 } packet_buf_t;
-
-typedef struct
-{
-    uint32_t buf_len;
-    uint32_t reserved;
-    uint64_t rx_index;
-} rx_mbuf_header_t;
-
-typedef struct
-{
-    rx_mbuf_header_t rx_head;
-    uint8_t          buf[0];
-} rx_mbuf_t;
 
 /*==================================================================================================
                                    GLOBAL VARIABLE DECLARATIONS

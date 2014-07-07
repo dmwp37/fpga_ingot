@@ -142,7 +142,7 @@ void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
     memset(packet, 0, sizeof(packet_buf_t));
 
     /* meta header */
-    packet->meta.transmit_queue = tx_global_queue;
+    packet->meta.tx.transmit_queue = tx_global_queue;
 
     /* higig2 header */
     packet->hg2.start      = 0xfb;
@@ -150,6 +150,7 @@ void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
     packet->hg2.src_mod    = 0x01;
     packet->hg2.dst_mod    = 0x00;
     packet->hg2.dst_port   = port;
+    packet->hg2.src_port   = (tx_global_queue != TX_QUEUE_FPGA_LOOP) ? 0 : port;
     packet->hg2.lbid       = 0x09;
     packet->hg2.vlan_id_lo = 0x01;
     packet->hg2.opcode     = 0x01;

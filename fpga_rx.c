@@ -36,7 +36,7 @@
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
-static int   fpga_rx_raw(rx_mbuf_t* rx_mbuf);
+static int   fpga_rx_raw(packet_buf_t* rx_mbuf);
 static void* fpga_rx_thread_func(void* arg);
 
 /*==================================================================================================
@@ -108,8 +108,8 @@ void fpga_rx_exit()
 *//*==============================================================================================*/
 int fpga_net_rx(int port, void* buf, size_t len)
 {
-    int        ret;
-    rx_mbuf_t* mbuf = NULL;
+    int           ret;
+    packet_buf_t* mbuf = NULL;
 
     if (port >= RX_PORT_NUM)
     {
@@ -122,7 +122,7 @@ int fpga_net_rx(int port, void* buf, size_t len)
         return -ENOBUFS;
     }
 
-    ret = mbuf->rx_head.buf_len;
+    ret = mbuf->meta.rx.buf_len;
     ret = (len > ret) ? ret : len;
 
     /* copy the data to user */
@@ -146,7 +146,7 @@ int fpga_net_rx(int port, void* buf, size_t len)
 
 @return which port from
 *//*==============================================================================================*/
-int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
+int fpga_rx_raw(packet_buf_t* rx_mbuf)
 {
     static volatile uint32_t rx_head = 0;
 
@@ -167,7 +167,7 @@ int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
 
     GDB_PRINT(*packet);
 
-    if (len < sizeof(packet_buf_t) + 16)
+    if (len < sizeof(packet_buf_t) + FPGA_NET_PACKET_LEN_MIN)
     {
         rx_error_num++;
         return -EAGAIN;
@@ -176,14 +176,12 @@ int fpga_rx_raw(rx_mbuf_t* rx_mbuf)
     {
         /* this is the port info */
         port = packet->hg2.src_port;
-        /* stript the higig header */
-        len -= sizeof(packet_buf_t);
-        /* store the len */
-        rx_mbuf->rx_head.buf_len = len;
+        /* Copy the packet */
+        memcpy(rx_mbuf, packet, len);
+        /* store the len without header */
+        rx_mbuf->meta.rx.buf_len = len - sizeof(packet_buf_t);
         /* set the rx index */
-        rx_mbuf->rx_head.rx_index = rx_packet_num;
-        /* Copy the data to the buffer provided to us */
-        memcpy(rx_mbuf->buf, packet->buf, len);
+        rx_mbuf->meta.rx.rx_index = rx_packet_num;
 
         rx_packet_num++;
     }
@@ -212,8 +210,8 @@ void* fpga_rx_thread_func(void* arg)
 {
     /* the thread sould only run on one cpu with high priority */
 
-    rx_mbuf_t* mbuf;
-    int        port;
+    packet_buf_t* mbuf;
+    int           port;
 
     while (fpga_rx_thread_run)
     {
