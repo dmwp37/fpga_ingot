@@ -197,6 +197,10 @@ void* rx_port_get(int port, int time)
             exit(1);
         }
     }
+    else
+    {
+        printf("%s(): no mbuf available in port[%d]\n", __func__, port);
+    }
 
     return mbuf;
 }
@@ -254,7 +258,7 @@ int wait_sem(sem_t* sem, int time_out)
         if (errno == ETIMEDOUT)
         {
             /* If a time out occurred, return a timeout response */
-            printf("Waiting for semaphore time out, time_out=%d ms\n", time_out);
+            printf("Waiting for rx data time out, time_out=%d ms\n", time_out);
         }
         else
         {
