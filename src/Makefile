@@ -3,20 +3,27 @@
 
 SHELL         := /bin/sh                                                                                                                                                                              
 
+INSTALL       := install
+INSTALL_DIR   := $(INSTALL) -m 755 -d
+RM            := rm -f
 
+# The directory to install
+prefix        := /usr/local
+bindir         = $(prefix)/bin
+libdir         = $(prefix)/lib64
+incdir         = $(prefix)/include
 # automatic rules for collecting and assembling all possible source
 # files.
 
 # obj output dir
 OBJ_DIR       := obj
 
-INC_DIRS      := -I..
+INC_DIRS      := -I. -I../hdr
 
-CFLAGS        := $(INC_DIRS) -g -Wall -Werror
-LD_FLAGS      := -L.. -lfpga_net -lgdb_print -lpthread -lrt
+CFLAGS        := $(INC_DIRS) -g -O1 -Wall -Werror -msse2
 
 # target define
-TARGET        := fpag_test
+TARGET        := libfpga_net.a
 
 # source files
 SRC_FILES     := $(wildcard *.c)
@@ -36,7 +43,7 @@ CPP_DEPS      := $(CPP_SRC_FILES:%.cpp=$(OBJ_DIR)/%.d)
 DEPS          := $(C_DEPS) $(CPP_DEPS)
 
 
-.PHONY: all clean deploy
+.PHONY: all clean install deploy
 
 # This is the default target.  It must be the first declared target.
 all: $(TARGET)
@@ -47,26 +54,25 @@ all: $(TARGET)
 
 # clean
 clean:
-	@$(MAKE) -C ../ clean
 	@$(RM) $(OBJ_FILES) $(TARGET)
 	@$(RM) -r $(OBJ_DIR)
 
 install: $(TARGET)
-	$(INSTALL_DIR) $(bindir)
-	$(INSTALL_PRG) $(TARGET) $(bindir)
+	$(INSTALL_DIR) $(libdir)
+	$(INSTALL_DIR) $(incdir)
+	$(INSTALL) -m 644 $(TARGET) $(libdir)
+	$(INSTALL) -m 644 fpga_net.h fpga_drv.h $(incdir)
 
 uninstall:
-	$(RM) $(bindir)/$(TARGET)
+	$(RM) $(libdir)/$(TARGET)
+	$(RM) $(incdir)/fpga_net.h $(incdir)/fpga_drv.h
 
 #
 # Rules for generating target
 #
-$(TARGET): $(OBJ_DIR) $(OBJ_FILES) ../libfpga_net.a
+$(TARGET): $(OBJ_DIR) $(OBJ_FILES)
 	@echo "generating $@ ..."
-	@$(CC) -g -o $@ $(OBJ_FILES) $(LD_FLAGS) 
-
-../libfpga_net.a:
-	@$(MAKE) -C ../
+	@$(AR) -cqs $@ $(OBJ_FILES)
 
 #
 # Rules for compiling cpp code
