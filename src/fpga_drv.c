@@ -9,9 +9,9 @@
 ====================================================================================================
                                            INCLUDE FILES
 ==================================================================================================*/
-#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "dg_dbg.h"
 #include "uio.h"
 #include "fpga_drv.h"
 #include "jspec/mmap.h"
@@ -62,7 +62,7 @@ int fpga_drv_init()
 
     if (fpga_drv_uio == NULL)
     {
-        printf("%s(): uio_init failed\n", __func__);
+        DG_DBG_ERROR("%s(): uio_init failed", __func__);
         return -1;
     }
 
@@ -91,7 +91,7 @@ void fpga_drv_reset(void)
     ingot_fabric_write(FAB_NID_QMGR, QMGR_CSR_STATS_CLR, 0);
     ingot_reg->warm_reset = 0xbaad;
 
-    printf("reset FPGA\n");
+    DG_DBG_TRACE("reset FPGA");
     usleep(10000);
 }
 

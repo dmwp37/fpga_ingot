@@ -18,7 +18,7 @@ incdir         = $(prefix)/include
 # obj output dir
 OBJ_DIR       := obj
 
-INC_DIRS      := -I. -I../hdr
+INC_DIRS      := -I. -I../hdr -Itest
 
 CFLAGS        := $(INC_DIRS) -g -O1 -Wall -Werror -msse2
 

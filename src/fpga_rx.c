@@ -10,9 +10,9 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include <string.h>
-#include <stdio.h>
 #include <errno.h>
 #include <pthread.h>
+#include "dg_dbg.h"
 #include "mem_map.h"
 #include "rx_mbuf.h"
 #include "fpga_drv.h"
@@ -75,7 +75,7 @@ int fpga_rx_init()
     fpga_rx_thread_run = 1;
     if (pthread_create(&fpga_rx_thread, NULL, fpga_rx_thread_func, NULL) != 0)
     {
-        printf("could not create fpga rx thread!\n");
+        DG_DBG_ERROR("could not create fpga rx thread!");
         fpga_rx_thread_run = 0;
         return -1;
     }
@@ -113,7 +113,7 @@ int fpga_net_rx(fpga_net_port_t port, void* buf, size_t len)
 
     if (port >= FPGA_PORT_MAX)
     {
-        printf("RX specify an invalid port number: #%d\n", port);
+        DG_DBG_ERROR("RX specify an invalid port number: #%d", port);
         return -ENOTSUP;
     }
 
@@ -238,7 +238,7 @@ void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
 
             if (port >= RX_PORT_NUM)
             {
-                printf("rx packet port invalid, port=%d (discarded)", port);
+                DG_DBG_ERROR("rx packet port invalid, port=%d (discarded)", port);
                 fflush(stdout);
                 port = -1;
             }

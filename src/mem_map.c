@@ -11,6 +11,7 @@
 ==================================================================================================*/
 #include <stdio.h>
 #include <stdlib.h>
+#include "dg_dbg.h"
 #include "mem_map.h"
 
 /*==================================================================================================
@@ -95,7 +96,7 @@ int mem_map_init()
     global_mem = hp_alloc(TOTAL_MEM_SIZE);
     if (global_mem == NULL)
     {
-        printf("%s(): can't alloc global memory!\n", __func__);
+        DG_DBG_ERROR("%s(): can't alloc global memory!", __func__);
         return -1;
     }
 

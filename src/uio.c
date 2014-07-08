@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include "dg_dbg.h"
 #include "uio.h"
 
 /*==================================================================================================
@@ -72,7 +73,7 @@ uio_t* uio_init(const char* driver_name)
 
     if (!uio_find(driver_name, uio->name))
     {
-        printf("error: Can't find UIO device for %s\n", driver_name);
+        DG_DBG_ERROR("error: Can't find UIO device for %s", driver_name);
         free(uio);
         return NULL;
     }
@@ -81,7 +82,7 @@ uio_t* uio_init(const char* driver_name)
 
     if ((fd = open(dev_path, O_RDWR | O_SYNC)) < 0)
     {
-        printf("error: Failed to open uio device %s. errno=%d(%m)\n", dev_path, errno);
+        DG_DBG_ERROR("error: Failed to open uio device %s. errno=%d(%m)", dev_path, errno);
         free(uio);
         return NULL;
     }
@@ -89,7 +90,7 @@ uio_t* uio_init(const char* driver_name)
 
     if ((mmap_size = uio_get_mem_size(uio->name, 0)) < 0)
     {
-        printf("error: can't get %s mmap0 size\n", uio->name);
+        DG_DBG_ERROR("error: can't get %s mmap0 size", uio->name);
         goto init_err;
     }
     uio->mmap_size = mmap_size;
@@ -97,7 +98,7 @@ uio_t* uio_init(const char* driver_name)
     if ((mmap_base = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
                           MAP_SHARED, uio->fd, 0)) == MAP_FAILED)
     {
-        printf("error: Failed to mmap. errno=%d(%m)\n", errno);
+        DG_DBG_ERROR("error: Failed to mmap. errno=%d(%m)", errno);
         goto init_err;
     }
     uio->base = mmap_base;
@@ -163,15 +164,15 @@ int uio_get_mem_size(const char* uio, int map_num)
 
     if ((file = fopen(filename, "r")) == NULL)
     {
-        printf("error: can't open %s. errno=%d(%m)\n", filename, errno);
+        DG_DBG_ERROR("error: can't open %s. errno=%d(%m)", filename, errno);
     }
     else if (fscanf(file, "0x%x", &ret) != 1)
     {
-        printf("error: fscanf %s failed. errno=%d(%m)\n", filename, errno);
+        DG_DBG_ERROR("error: fscanf %s failed. errno=%d(%m)", filename, errno);
     }
     else
     {
-        printf("%s mmap %d size is 0x%x\n", uio, map_num, ret);
+        DG_DBG_TRACE("%s mmap %d size is 0x%x\n", uio, map_num, ret);
     }
 
     if (file != NULL)
@@ -200,7 +201,7 @@ bool uio_find(const char* driver, char* uio_name)
 
     if ((n = scandir("/sys/class/uio", &namelist, NULL, alphasort)) < 0)
     {
-        printf("error: can't scan /sys/class/uio. errno=%d(%m)\n", errno);
+        DG_DBG_ERROR("error: can't scan /sys/class/uio. errno=%d(%m)", errno);
     }
     else
     {
@@ -217,7 +218,7 @@ bool uio_find(const char* driver, char* uio_name)
             else if (uio_is_expected(namelist[i]->d_name, driver))
             {
                 strcpy(uio_name, namelist[i]->d_name);
-                printf("uio_name is '%s' for driver '%s'\n", uio_name, driver);
+                DG_DBG_TRACE("uio_name is '%s' for driver '%s'", uio_name, driver);
                 is_find = true;
             }
 
@@ -248,7 +249,7 @@ bool uio_is_expected(const char* name, const char* driver)
 
     if ((fp = fopen(filename, "r")) == NULL)
     {
-        printf("can not open %s. errno=%d(%m)\n", filename, errno);
+        DG_DBG_ERROR("can not open %s. errno=%d(%m)", filename, errno);
     }
     else
     {
@@ -260,7 +261,7 @@ bool uio_is_expected(const char* name, const char* driver)
             /* see if the name contains our driver name */
             if (strstr(line, driver) != NULL)
             {
-                printf("/sys/class/uio/%s is expected for %s\n", name, driver);
+                DG_DBG_TRACE("/sys/class/uio/%s is expected for %s\n", name, driver);
                 ret = true;
             }
         }

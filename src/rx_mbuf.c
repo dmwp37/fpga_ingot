@@ -13,6 +13,7 @@
 #include <semaphore.h>
 #include <errno.h>
 #include <time.h>
+#include "dg_dbg.h"
 #include "mem_map.h"
 #include "rx_mbuf.h"
 
@@ -70,7 +71,7 @@ int rx_mbuf_init()
     rx_mbuf_mem = hp_alloc(MBUF_SIZE * RX_MBUF_COUNT);
     if (rx_mbuf_mem == NULL)
     {
-        printf("%s(): can't alloc rx mbuf!\n", __func__);
+        DG_DBG_ERROR("%s(): can't alloc rx mbuf!", __func__);
         return -1;
     }
 
@@ -94,7 +95,7 @@ int rx_mbuf_init()
         if (sem_init(&rx_port_ring[i].sem, 0, 0) != 0)
         {
             ret = -1;
-            printf("Failed to init semphore for rx port, errno=%d(%m)", errno);
+            DG_DBG_ERROR("Failed to init semphore for rx port, errno=%d(%m)", errno);
         }
 
         rx_port_ring[i].ring = port_ring;
@@ -134,7 +135,7 @@ void* rx_mbuf_get()
     /* this is sc dequeue for the rx thread, not mc */
     if (unlikely(rte_ring_sc_dequeue(rx_mbuf_ring, &mbuf) != 0))
     {
-        printf("%s(): no mbuf available in the mbuf pool!\n", __func__);
+        DG_DBG_ERROR("%s(): no mbuf available in the mbuf pool!", __func__);
         return NULL;
     }
 
@@ -151,7 +152,7 @@ void rx_mbuf_put(void* mbuf)
 {
     if (unlikely(rte_ring_mp_enqueue(rx_mbuf_ring, mbuf) != 0))
     {
-        printf("%s(): can't enqueue mbuf to the mbuf pool!\n", __func__);
+        DG_DBG_ERROR("%s(): can't enqueue mbuf to the mbuf pool!", __func__);
     }
 }
 
@@ -167,7 +168,7 @@ int rx_port_put(int port, void* mbuf)
 {
     if (unlikely(rte_ring_sp_enqueue(rx_port_ring[port].ring, mbuf) != 0))
     {
-        printf("%s(): can't enqueue mbuf to the port[%d] ring!\n", __func__, port);
+        DG_DBG_ERROR("%s(): can't enqueue mbuf to the port[%d] ring!", __func__, port);
         return -1;
     }
 
@@ -192,14 +193,14 @@ void* rx_port_get(int port, int time)
     {
         if (unlikely(rte_ring_mc_dequeue(rx_port_ring[port].ring, &mbuf) != 0))
         {
-            printf("%s(): no mbuf available in the port[%d] mbuf !\n", __func__, port);
-            printf("%s(): sem sync wrong!\n", __func__);
+            DG_DBG_ERROR("%s(): no mbuf available in port[%d]", __func__, port);
+            DG_DBG_ERROR("%s(): sem sync wrong!", __func__);
             exit(1);
         }
     }
     else
     {
-        printf("%s(): no mbuf available in port[%d]\n", __func__, port);
+        DG_DBG_ERROR("%s(): no mbuf available in port[%d]", __func__, port);
     }
 
     return mbuf;
@@ -239,7 +240,7 @@ int wait_sem(sem_t* sem, int time_out)
 
         if (clock_gettime(CLOCK_REALTIME, &timeout_time) != 0)
         {
-            printf("Failed to call clock_gettime(), errno=%d(%m)\n", errno);
+            DG_DBG_ERROR("Failed to call clock_gettime(), errno=%d(%m)", errno);
             return -1;
         }
         else
@@ -258,12 +259,12 @@ int wait_sem(sem_t* sem, int time_out)
         if (errno == ETIMEDOUT)
         {
             /* If a time out occurred, return a timeout response */
-            printf("Waiting for rx data time out, time_out=%d ms\n", time_out);
+            DG_DBG_ERROR("Waiting for rx data time out, time_out=%d ms", time_out);
         }
         else
         {
             /* If an error other than time out occurred, send an error response */
-            printf("Waiting for semaphore failed, errno=%d(%m)\n", errno);
+            DG_DBG_ERROR("Waiting for semaphore failed, errno=%d(%m)", errno);
         }
     }
 

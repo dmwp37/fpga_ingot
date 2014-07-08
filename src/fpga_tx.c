@@ -11,6 +11,7 @@
 ==================================================================================================*/
 #include <string.h>
 #include <errno.h>
+#include "dg_dbg.h"
 #include "rte_common.h"
 #include "mem_map.h"
 #include "fpga_drv.h"
@@ -80,7 +81,7 @@ int fpga_net_config(tx_queue_t queue)
 {
     if (queue > TX_QUEUE_MAX)
     {
-        printf("%s(): unsupported tx queue: %d", __func__, queue);
+        DG_DBG_ERROR("%s(): unsupported tx queue: %d", __func__, queue);
         return -1;
     }
 
@@ -110,7 +111,7 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 
     if (port >= FPGA_PORT_MAX)
     {
-        printf("TX specify an invalid port number: #%d\n", port);
+        DG_DBG_ERROR("TX specify an invalid port number: #%d", port);
         return -ENOTSUP;
     }
 
@@ -126,7 +127,7 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
         {
             if (retry > 10000000)
             {
-                printf("TX stuck while processing TX Descp #%d\n", idx);
+                DG_DBG_ERROR("TX stuck while processing TX Descp #%d", idx);
                 tx_dropped_num++;
                 return -ENOBUFS;
             }

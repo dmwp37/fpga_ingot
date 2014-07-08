@@ -63,7 +63,6 @@
  *
  ***************************************************************************/
 
-#include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdint.h>
@@ -72,6 +71,7 @@
 #include <errno.h>
 #include <sys/queue.h>
 #include "rte_ring.h"
+#include "dg_dbg.h"
 
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x) - 1) & (x)) == 0)
@@ -84,8 +84,8 @@ ssize_t rte_ring_get_memsize(unsigned count)
     /* count must be a power of 2 */
     if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK))
     {
-        printf("Requested size is invalid, must be power of 2, and "
-               "do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
+        DG_DBG_ERROR("Requested size is invalid, must be power of 2, and "
+                     "do not exceed the size limit %u", RTE_RING_SZ_MASK);
         return -EINVAL;
     }
 
