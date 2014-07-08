@@ -63,9 +63,9 @@ int rx_mbuf_init()
 {
     int   i;
     int   ret = 0;
-    void* p_mbuf;
+    uint8_t* p_mbuf;
 
-    rx_mbuf_ring = global_mem->base + RX_MBUF_RING_OFFSET;
+    rx_mbuf_ring = (struct rte_ring*)((uint8_t*)global_mem->base + RX_MBUF_RING_OFFSET);
 
     rx_mbuf_mem = hp_alloc(MBUF_SIZE * RX_MBUF_COUNT);
     if (rx_mbuf_mem == NULL)
@@ -87,7 +87,7 @@ int rx_mbuf_init()
     rx_mbuf_ring->prod.tail += RX_MBUF_COUNT - 1;
 
     /* init the port mbuf ring */
-    void* port_ring = global_mem->base + RX_PORT_RING_OFFSET;
+    struct rte_ring* port_ring = (struct rte_ring*)((uint8_t*)global_mem->base + RX_PORT_RING_OFFSET);
     for (i = 0; i < RX_PORT_NUM; i++)
     {
         /* init the semaphore for blocking read */

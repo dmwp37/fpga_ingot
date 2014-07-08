@@ -70,7 +70,7 @@ int fpga_rx_init()
     ingot_reg->rx_desc_base = phys_base + RX_DESCRIPTOR_OFFSET;
     ingot_reg->rx_buf_base  = phys_base + RX_MBUF_OFFSET;
 
-    memset(global_mem->base + RX_DESCRIPTOR_OFFSET, 0, RX_DESCRIPTOR_SIZE);
+    memset((uint8_t*)global_mem->base + RX_DESCRIPTOR_OFFSET, 0, RX_DESCRIPTOR_SIZE);
 
     fpga_rx_thread_run = 1;
     if (pthread_create(&fpga_rx_thread, NULL, fpga_rx_thread_func, NULL) != 0)
@@ -108,7 +108,7 @@ void fpga_rx_exit()
 *//*==============================================================================================*/
 int fpga_net_rx(fpga_net_port_t port, void* buf, size_t len)
 {
-    int           ret;
+    size_t        ret;
     packet_buf_t* mbuf = NULL;
 
     if (port >= FPGA_PORT_MAX)
@@ -152,12 +152,14 @@ int fpga_rx_raw(packet_buf_t* rx_mbuf)
 
     uint32_t idx = rx_head & RX_RING_MASK;
 
-    packet_buf_t* packet = (packet_buf_t*)(global_mem->base + RX_MBUF_OFFSET + MBUF_SIZE * idx);
+    packet_buf_t* packet = (packet_buf_t*)((uint8_t*)global_mem->base +
+                                           RX_MBUF_OFFSET + MBUF_SIZE * idx);
 
-    rx_descp_entry_t* p_rx_desc = global_mem->base + RX_DESCRIPTOR_OFFSET;
+    rx_descp_entry_t* p_rx_desc = (rx_descp_entry_t*)((uint8_t*)global_mem->base +
+                                                      RX_DESCRIPTOR_OFFSET);
 
-    int len = p_rx_desc[idx].buflen; /* total packet length */
-    int port;
+    size_t len = p_rx_desc[idx].buflen; /* total packet length */
+    int    port;
 
     if (len == 0)
     {
@@ -206,7 +208,7 @@ int fpga_rx_raw(packet_buf_t* rx_mbuf)
 /*=============================================================================================*//**
 @brief fpga rx thread function
 *//*==============================================================================================*/
-void* fpga_rx_thread_func(void* arg)
+void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
 {
     /* the thread sould only run on one cpu with high priority */
 

@@ -16,7 +16,7 @@ CFLAGS        := $(INC_DIRS) -g -Wall -Werror
 LD_FLAGS      := -L.. -lfpga_net -lgdb_print -lpthread -lrt
 
 # target define
-TARGET        := fpag_test
+TARGET        := fpga_test
 
 # source files
 SRC_FILES     := $(wildcard *.c)

@@ -64,7 +64,7 @@ int fpga_tx_init()
     ingot_reg->tx_desc_base = phys_base + TX_DESCRIPTOR_OFFSET;
     ingot_reg->tx_buf_base  = phys_base + TX_MBUF_OFFSET;
 
-    memset(global_mem->base + TX_DESCRIPTOR_OFFSET, 0, TX_DESCRIPTOR_SIZE);
+    memset((uint8_t*)global_mem->base + TX_DESCRIPTOR_OFFSET, 0, TX_DESCRIPTOR_SIZE);
 
     return 0;
 }
@@ -104,7 +104,7 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     uint32_t          head;
     uint32_t          idx;
     uint32_t          retry     = 0;
-    tx_descp_entry_t* p_tx_desc = global_mem->base + TX_DESCRIPTOR_OFFSET;
+    tx_descp_entry_t* p_tx_desc = (tx_descp_entry_t*)((uint8_t*)global_mem->base + TX_DESCRIPTOR_OFFSET);
     uint64_t          reg       = 0;
     int               success;
 
@@ -138,7 +138,7 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     } while (unlikely(success == 0));
 
     /* prepare mbuf data to tx */
-    packet_buf_t* packet = (packet_buf_t*)(global_mem->base + TX_MBUF_OFFSET + MBUF_SIZE * idx);
+    packet_buf_t* packet = (packet_buf_t*)((uint8_t*)global_mem->base + TX_MBUF_OFFSET + MBUF_SIZE * idx);
     setup_packet(packet, port, buf, len);
     p_tx_desc[idx].bufptr = (uint64_t*)packet;
     /* add the header length to packet */
