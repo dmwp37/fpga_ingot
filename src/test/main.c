@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "mem_map.h"
 #include "fpga_drv.h"
 #include "fpga_net.h"
 
@@ -35,6 +36,7 @@ void test_fpga_net()
 
 int main()
 {
+    dump_mem_map();
     test_fpga_net();
 
     return 0;

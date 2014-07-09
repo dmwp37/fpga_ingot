@@ -10,9 +10,9 @@ SHELL         := /bin/sh
 # obj output dir
 OBJ_DIR       := obj
 
-INC_DIRS      := -I../../hdr
+INC_DIRS      := -I../../hdr -I../
 
-CFLAGS        := $(INC_DIRS) -g -Wall -Werror  -D_GNU_SOURCE
+CFLAGS        := $(INC_DIRS) -g -Wall -Werror  -D_GNU_SOURCE -DNDEBUG
 LD_FLAGS      := -L.. -lfpga_net -lgdb_print -lpthread -lrt
 
 # target define
