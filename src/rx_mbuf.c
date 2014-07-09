@@ -88,7 +88,7 @@ int rx_mbuf_init()
     rx_mbuf_ring->prod.tail += RX_MBUF_COUNT - 1;
 
     /* init the port mbuf ring */
-    struct rte_ring* port_ring = (struct rte_ring*)((uint8_t*)global_mem->base + RX_PORT_RING_OFFSET);
+    uint8_t* port_ring = (uint8_t*)global_mem->base + RX_PORT_RING_OFFSET;
     for (i = 0; i < RX_PORT_NUM; i++)
     {
         /* init the semaphore for blocking read */
@@ -98,8 +98,8 @@ int rx_mbuf_init()
             DG_DBG_ERROR("Failed to init semphore for rx port, errno=%d(%m)", errno);
         }
 
-        rx_port_ring[i].ring = port_ring;
-        rte_ring_init(port_ring, RX_PORT_MBUF_COUNT);
+        rx_port_ring[i].ring = (struct rte_ring*)port_ring;
+        rte_ring_init((struct rte_ring*)port_ring, RX_PORT_MBUF_COUNT);
 
         port_ring += RX_PORT_RING_REAL_SIZE;
     }
