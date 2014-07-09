@@ -11,6 +11,7 @@
 ==================================================================================================*/
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 #include <pthread.h>
 #include "dg_dbg.h"
 #include "mem_map.h"
@@ -210,7 +211,17 @@ int fpga_rx_raw(packet_buf_t* rx_mbuf)
 *//*==============================================================================================*/
 void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
 {
-    /* the thread sould only run on one cpu with high priority */
+#ifdef __linux__
+    /* the thread should only run on one cpu with high priority */
+    long      cpu_num = sysconf(_SC_NPROCESSORS_ONLN);
+    cpu_set_t cpu_info;
+    CPU_ZERO(&cpu_info);
+    CPU_SET(cpu_num - 1, &cpu_info);
+    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpu_info) != 0)
+    {
+        DG_DBG_ERROR("set rx thread affinity failed");
+    }
+#endif
 
     packet_buf_t* mbuf;
     int           port;

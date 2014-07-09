@@ -20,7 +20,7 @@ OBJ_DIR       := obj
 
 INC_DIRS      := -I. -I../hdr -Itest
 
-CFLAGS        := $(INC_DIRS) -g -O1 -Wall -Werror -msse2
+CFLAGS        := $(INC_DIRS) -g -O1 -Wall -Werror -msse2 -D_GNU_SOURCE
 
 # target define
 TARGET        := libfpga_net.a
