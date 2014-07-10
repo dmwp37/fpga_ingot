@@ -37,15 +37,17 @@
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
+static int   map_bcm_port(int bcm_port);
 static int   fpga_rx_raw(packet_buf_t* rx_mbuf);
 static void* fpga_rx_thread_func(void* arg);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
 ==================================================================================================*/
-static uint64_t rx_packet_num  = 0;
-static uint32_t rx_dropped_num = 0;
-static uint32_t rx_error_num   = 0;
+static uint64_t rx_packet_num     = 0;
+static uint32_t rx_dropped_num    = 0;
+static uint32_t rx_unexpected_num = 0;
+static uint32_t rx_error_num      = 0;
 
 /*==================================================================================================
                                           LOCAL VARIABLES
@@ -139,13 +141,45 @@ int fpga_net_rx(fpga_net_port_t port, void* buf, size_t len)
 /*==================================================================================================
                                           LOCAL FUNCTIONS
 ==================================================================================================*/
+int map_bcm_port(int bcm_port)
+{
+#define PORT_MAPPER(x) case BCM_ ## x: \
+    return x
+    switch (bcm_port)
+    {
+        PORT_MAPPER(GE_0);
+        PORT_MAPPER(GE_1);
+        PORT_MAPPER(GE_2);
+        PORT_MAPPER(GE_3);
+        PORT_MAPPER(GE_4);
+        PORT_MAPPER(GE_5);
+        PORT_MAPPER(GE_6);
+        PORT_MAPPER(GE_7);
+        PORT_MAPPER(GE_8);
+        PORT_MAPPER(GE_9);
+        PORT_MAPPER(GE_10);
+        PORT_MAPPER(GE_11);
+        PORT_MAPPER(GE_12);
+        PORT_MAPPER(GE_13);
+        PORT_MAPPER(GE_14);
+        PORT_MAPPER(GE_15);
+        PORT_MAPPER(XE_0);
+        PORT_MAPPER(XE_1);
+        PORT_MAPPER(XE_2);
+        PORT_MAPPER(XE_3);
+        PORT_MAPPER(WTB_1);
+        PORT_MAPPER(WTB_2);
+    }
+#undef PORT_MAPPER
+    return -1;
+}
 
 /*=============================================================================================*//**
 @brief receive a packet from FPGA.
 
 @param[in] mbuf - the mbuf to receive packet
 
-@return which port from
+@return which bcm port from
 *//*==============================================================================================*/
 int fpga_rx_raw(packet_buf_t* rx_mbuf)
 {
@@ -224,6 +258,7 @@ void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
 #endif
 
     packet_buf_t* mbuf;
+    int           bcm_port;
     int           port;
 
     while (fpga_rx_thread_run)
@@ -245,13 +280,13 @@ void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
                 return NULL;
             }
 
-            port = fpga_rx_raw(mbuf);
+            bcm_port = fpga_rx_raw(mbuf);
+            port     = map_bcm_port(bcm_port);
 
-            if (port >= RX_PORT_NUM)
+            if ((bcm_port > 0) && (port < 0))
             {
-                DG_DBG_ERROR("rx packet port invalid, port=%d (discarded)", port);
-                fflush(stdout);
-                port = -1;
+                DG_DBG_ERROR("rx packet port invalid, port=%d (discarded)", bcm_port);
+                rx_unexpected_num++;
             }
 
         } while (port < 0); /* wait until we got a valid mbuf */

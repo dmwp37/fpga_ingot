@@ -26,6 +26,8 @@
 /*==================================================================================================
                                            LOCAL MACROS
 ==================================================================================================*/
+#define LOBYTE(w) ((uint8_t)(uint16_t)(w))
+#define HIBYTE(w) ((uint8_t)(((uint16_t)(w)) >> 8))
 
 /*==================================================================================================
                             LOCAL TYPEDEFS (STRUCTURES, UNIONS, ENUMS)
@@ -161,9 +163,42 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 /*==================================================================================================
                                           LOCAL FUNCTIONS
 ==================================================================================================*/
-
 void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
 {
+    typedef struct
+    {
+        uint8_t port;
+        uint8_t vlan;
+
+    } bcm_port_info_t;
+
+#define BCM_PORT(x) [x] = { .port = BCM_ ## x, .vlan = (x + 1) * 10 }
+
+    static bcm_port_info_t bcm_port_map[FPGA_PORT_MAX] =
+    {
+        BCM_PORT(GE_0),
+        BCM_PORT(GE_1),
+        BCM_PORT(GE_2),
+        BCM_PORT(GE_3),
+        BCM_PORT(GE_4),
+        BCM_PORT(GE_5),
+        BCM_PORT(GE_6),
+        BCM_PORT(GE_7),
+        BCM_PORT(GE_8),
+        BCM_PORT(GE_9),
+        BCM_PORT(GE_10),
+        BCM_PORT(GE_11),
+        BCM_PORT(GE_12),
+        BCM_PORT(GE_13),
+        BCM_PORT(GE_14),
+        BCM_PORT(GE_15),
+        BCM_PORT(XE_0),
+        BCM_PORT(XE_1),
+        BCM_PORT(XE_2),
+        BCM_PORT(XE_3),
+        BCM_PORT(WTB_1),
+        BCM_PORT(WTB_2)
+    };
     /* init the header */
     memset(packet, 0, sizeof(packet_buf_t));
 
@@ -175,10 +210,11 @@ void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
     packet->hg2.tc         = 0x01;
     packet->hg2.src_mod    = 0x01;
     packet->hg2.dst_mod    = 0x00;
-    packet->hg2.dst_port   = port;
-    packet->hg2.src_port   = (tx_global_queue != TX_QUEUE_FPGA_LOOP) ? 0 : port;
+    packet->hg2.dst_port   = bcm_port_map[port].port;
+    packet->hg2.src_port   = (tx_global_queue != TX_QUEUE_FPGA_LOOP) ? 0 : bcm_port_map[port].port;
     packet->hg2.lbid       = 0x09;
-    packet->hg2.vlan_id_lo = 0x01;
+    packet->hg2.vlan_id_lo = LOBYTE(bcm_port_map[port].vlan);
+    packet->hg2.vlan_id_hi = HIBYTE(bcm_port_map[port].vlan);
     packet->hg2.opcode     = 0x01;
 
     /* copy rest data to the tx mbuf */

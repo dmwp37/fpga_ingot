@@ -54,8 +54,8 @@ typedef enum
     XE_1,
     XE_2,
     XE_3,
-    GE_16, /* for WTB1 */
-    GE_24, /* for WTB2 */
+    WTB_1, /* for WTB1 */
+    WTB_2, /* for WTB2 */
     /* must be equal to RX_PORT_NUM */
     FPGA_PORT_MAX
 } fpga_net_port_t;
