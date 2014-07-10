@@ -68,6 +68,7 @@ int fpga_drv_init()
 
     ingot_reg = (ingot_t*)fpga_drv_uio->base;
     fpga_drv_reset();
+    fpga_drv_enable_rxtx();
     return 0;
 }
 
@@ -93,6 +94,19 @@ void fpga_drv_reset(void)
 
     DG_DBG_TRACE("reset FPGA");
     usleep(10000);
+}
+
+/*=============================================================================================*//**
+@brief Enable RX/TX
+
+*//*==============================================================================================*/
+void fpga_drv_enable_rxtx(void)
+{
+    ingot_fabric_write(FAB_NID_ENETA, ENET_CSR_HIGIG_CTL_1,
+                       ENET_CSR_HIGIG_CTL_1_RXEN | ENET_CSR_HIGIG_CTL_1_TXEN);
+
+    ingot_fabric_write(FAB_NID_ENETB, ENET_CSR_HIGIG_CTL_1,
+                       ENET_CSR_HIGIG_CTL_1_RXEN | ENET_CSR_HIGIG_CTL_1_TXEN);
 }
 
 /*=============================================================================================*//**

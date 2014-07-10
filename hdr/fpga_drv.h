@@ -42,6 +42,7 @@ int  fpga_drv_init();
 void fpga_drv_exit();
 
 void fpga_drv_reset(void);
+void fpga_drv_enable_rxtx(void);
 
 uint64_t fpga_drv_get_version();
 
