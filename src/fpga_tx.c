@@ -17,6 +17,7 @@
 #include "fpga_drv.h"
 #include "fpga_net.h"
 #include "fpga_tx.h"
+#include <gdb_print.h>
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -45,7 +46,7 @@ static inline void setup_packet(packet_buf_t* packet, int port, const void* buf,
 /*==================================================================================================
                                           LOCAL VARIABLES
 ==================================================================================================*/
-static int tx_global_queue = TX_QUEUE_FPGA_LOOP;
+static int tx_global_queue = TX_QUEUE_HIGIG;
 
 static uint64_t tx_packet_num  = 0;
 static uint32_t tx_dropped_num = 0;
@@ -213,11 +214,12 @@ void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
     packet->hg2.dst_port   = bcm_port_map[port].port;
     packet->hg2.src_port   = (tx_global_queue != TX_QUEUE_FPGA_LOOP) ? 0 : bcm_port_map[port].port;
     packet->hg2.lbid       = 0x09;
-    packet->hg2.vlan_id_lo = LOBYTE(bcm_port_map[port].vlan);
-    packet->hg2.vlan_id_hi = HIBYTE(bcm_port_map[port].vlan);
+    packet->hg2.vlan_id_lo = 0x01;
     packet->hg2.opcode     = 0x01;
 
     /* copy rest data to the tx mbuf */
     memcpy(packet->buf, buf, len);
+
+    //GDB_PRINT(*packet);
 }
 
