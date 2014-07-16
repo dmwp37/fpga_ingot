@@ -13,13 +13,14 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <arpa/inet.h>
+#include <netinet/ether.h>
 #include "dg_dbg.h"
 #include "mem_map.h"
 #include "rx_mbuf.h"
 #include "fpga_drv.h"
 #include "fpga_net.h"
 #include "fpga_rx.h"
-#include <gdb_print.h>
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -134,7 +135,6 @@ int fpga_net_rx(fpga_net_port_t port, void* buf, size_t len)
     /* release the mbuf */
     rx_mbuf_put(mbuf);
 
-
     return ret;
 }
 
@@ -143,8 +143,7 @@ int fpga_net_rx(fpga_net_port_t port, void* buf, size_t len)
 ==================================================================================================*/
 int map_bcm_port(int bcm_port)
 {
-#define PORT_MAPPER(x) case BCM_ ## x: \
-    return x
+#define PORT_MAPPER(x) case BCM_ ## x: return x
     switch (bcm_port)
     {
         PORT_MAPPER(GE_0);
@@ -202,26 +201,43 @@ int fpga_rx_raw(packet_buf_t* rx_mbuf)
         return -EAGAIN;
     }
 
-/*    GDB_PRINT(*packet); */
+    /* GDB_PRINT(*packet); */
+    /* DG_DBG_ERROR("get a packet from bcm_port[%d]", packet->hg2.src_port); */
 
-    if (len < sizeof(packet_buf_t) + FPGA_NET_PACKET_LEN_MIN)
+    /* here we do some packet filter */
+    /* this is the port info */
+    int                  bcm_port = packet->hg2.src_port;
+    struct ether_header* eh       = (struct ether_header*)packet->buf;
+
+    if (unlikely((port = map_bcm_port(bcm_port)) < 0))
     {
+        DG_DBG_TRACE("rx packet port invalid, bcm_port=%d (discarded)", bcm_port);
+        rx_unexpected_num++;
+    }
+    else if (unlikely(len < (sizeof(packet_buf_t) + FPGA_NET_PACKET_LEN_MIN)))
+    {
+        DG_DBG_TRACE("rx packet length invalid, len=%d (discarded)", len);
         rx_error_num++;
-        return -EAGAIN;
+        port = -EAGAIN;
+    }
+    else if (unlikely(eh->ether_type != ntohs(ETH_P_DIAG)))
+    {
+        /* filter out DIAG packet */
+        DG_DBG_TRACE("rx packet type invalid, port=%d (discarded)", port);
+        rx_unexpected_num++;
+        port = -EAGAIN;
     }
     else
     {
-        /* this is the port info */
-        port = packet->hg2.src_port;
         /* Copy the packet */
         memcpy(rx_mbuf, packet, len);
         /* store the len without header */
         rx_mbuf->meta.rx.buf_len = len - sizeof(packet_buf_t);
         /* set the rx index */
         rx_mbuf->meta.rx.rx_index = rx_packet_num;
-
-        rx_packet_num++;
     }
+
+    rx_packet_num++;
 
     /* Initialize the buflen of Descp to zero, so that HW will reuse it */
     p_rx_desc[idx].buflen = 0;
@@ -258,7 +274,6 @@ void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
 #endif
 
     packet_buf_t* mbuf;
-    int           bcm_port;
     int           port;
 
     while (fpga_rx_thread_run)
@@ -280,19 +295,18 @@ void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
                 return NULL;
             }
 
-            bcm_port = fpga_rx_raw(mbuf);
-            port     = map_bcm_port(bcm_port);
-
-            if ((bcm_port > 0) && (port < 0))
+            port = fpga_rx_raw(mbuf);
+#if 0
+            if (port > 0)
             {
-                DG_DBG_ERROR("rx packet port invalid, port=%d (discarded)", bcm_port);
-                rx_unexpected_num++;
+                DG_DBG_ERROR("get a packet from port[%d]", port);
             }
+#endif
 
         } while (port < 0); /* wait until we got a valid mbuf */
 
         /* print the data */
-        //GDB_PRINT(*mbuf);
+        /* GDB_PRINT(*mbuf); */
 
         /* put the mbuf to a port */
         if (unlikely(rx_port_put(port, mbuf) < 0))

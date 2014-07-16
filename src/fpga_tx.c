@@ -17,7 +17,6 @@
 #include "fpga_drv.h"
 #include "fpga_net.h"
 #include "fpga_tx.h"
-#include <gdb_print.h>
 
 /*==================================================================================================
                                           LOCAL CONSTANTS
@@ -104,8 +103,10 @@ int fpga_net_config(tx_queue_t queue)
 int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 {
     static volatile uint32_t tx_head = 0;
+    static volatile uint32_t tx_tail = 0;
 
     uint32_t          head;
+    uint32_t          next;
     uint32_t          idx;
     uint32_t          retry     = 0;
     tx_descp_entry_t* p_tx_desc = (tx_descp_entry_t*)((uint8_t*)global_mem->base + TX_DESCRIPTOR_OFFSET);
@@ -123,6 +124,7 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     do
     {
         head = tx_head;
+        next = head + 1;
         idx  = head & TX_RING_MASK;
 
         /* check that we have tx entry available in ring */
@@ -138,7 +140,7 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
             continue;
         }
         /* test and increase tx_head atomically */
-        success = rte_atomic32_cmpset(&tx_head, head, head + 1);
+        success = rte_atomic32_cmpset(&tx_head, head, next);
     } while (unlikely(success == 0));
 
     /* prepare mbuf data to tx */
@@ -158,6 +160,17 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     /* write to the fpga hardware */
     ingot_reg->tx_packet = reg;
 
+    /*
+     * If there are other enqueues in progress that preceded us,
+     * we need to wait for them to complete
+     */
+    while (unlikely(tx_tail != head))
+    {
+        rte_pause();
+    }
+
+    tx_tail = next;
+
     return 0;
 }
 
@@ -173,10 +186,10 @@ void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
 
     } bcm_port_info_t;
 
-#define BCM_PORT(x) [x] = { .port = BCM_ ## x, .vlan = (x + 1) * 10 }
-
     static bcm_port_info_t bcm_port_map[FPGA_PORT_MAX] =
     {
+#define BCM_PORT(x) [x] = { .port = BCM_ ## x, .vlan = (x + 1) * 10 }
+
         BCM_PORT(GE_0),
         BCM_PORT(GE_1),
         BCM_PORT(GE_2),
@@ -199,6 +212,8 @@ void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
         BCM_PORT(XE_3),
         BCM_PORT(WTB_1),
         BCM_PORT(WTB_2)
+
+#undef BCM_PORT
     };
     /* init the header */
     memset(packet, 0, sizeof(packet_buf_t));
@@ -214,12 +229,11 @@ void setup_packet(packet_buf_t* packet, int port, const void* buf, size_t len)
     packet->hg2.dst_port   = bcm_port_map[port].port;
     packet->hg2.src_port   = (tx_global_queue != TX_QUEUE_FPGA_LOOP) ? 0 : bcm_port_map[port].port;
     packet->hg2.lbid       = 0x09;
-    packet->hg2.vlan_id_lo = 0x01;
+    packet->hg2.vlan_id_lo = LOBYTE(bcm_port_map[port].vlan);
+    packet->hg2.vlan_id_hi = HIBYTE(bcm_port_map[port].vlan);
     packet->hg2.opcode     = 0x01;
 
     /* copy rest data to the tx mbuf */
     memcpy(packet->buf, buf, len);
-
-    //GDB_PRINT(*packet);
 }
 
