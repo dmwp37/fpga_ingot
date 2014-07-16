@@ -157,9 +157,6 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 
     rte_compiler_barrier();
 
-    /* write to the fpga hardware */
-    ingot_reg->tx_packet = reg;
-
     /*
      * If there are other enqueues in progress that preceded us,
      * we need to wait for them to complete
@@ -168,6 +165,9 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     {
         rte_pause();
     }
+
+    /* write to the fpga hardware */
+    ingot_reg->tx_packet = reg;
 
     tx_tail = next;
 
