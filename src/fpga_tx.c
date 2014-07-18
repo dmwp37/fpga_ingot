@@ -10,6 +10,7 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include <string.h>
+#include <unistd.h>
 #include <errno.h>
 #include "dg_dbg.h"
 #include "rte_common.h"
@@ -22,6 +23,7 @@
                                           LOCAL CONSTANTS
 ==================================================================================================*/
 #define TX_RING_MASK (TX_DESCRIPTOR_COUNT - 1)
+#define FPGA_CONFIG  "/tmp/fpga_config"
 
 /*==================================================================================================
                                            LOCAL MACROS
@@ -68,6 +70,11 @@ int fpga_tx_init()
     ingot_reg->tx_buf_base  = phys_base + TX_MBUF_OFFSET;
 
     memset((uint8_t*)global_mem->base + TX_DESCRIPTOR_OFFSET, 0, TX_DESCRIPTOR_SIZE);
+
+    if (access(FPGA_CONFIG, F_OK) != -1)
+    {
+        tx_global_queue = TX_QUEUE_FPGA_LOOP;
+    }
 
     return 0;
 }
