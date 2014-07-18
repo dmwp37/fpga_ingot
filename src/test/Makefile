@@ -41,6 +41,9 @@ DEPS          := $(C_DEPS) $(CPP_DEPS)
 # This is the default target.  It must be the first declared target.
 all: $(TARGET)
 
+deploy: $(TARGET)
+	cp -f $< ../../../../../out/install/usr/local/sbin
+
 #
 # rules definition
 #
