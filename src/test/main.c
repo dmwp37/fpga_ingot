@@ -4,9 +4,11 @@
 #include <string.h>
 #include <netinet/ether.h>
 #include <arpa/inet.h>
+#include "dg_dbg.h"
 #include "mem_map.h"
 #include "fpga_drv.h"
 #include "fpga_net.h"
+#include "rx_mbuf.h"
 
 #define FPGA_CONFIG "/tmp/fpga_config"
 
@@ -55,6 +57,18 @@ void test_fpga_net()
             }
         }
     }
+
+    i = DG_DBG_get_dbg_level();
+    DG_DBG_set_dbg_level(DG_DBG_LVL_DISABLE);
+    for (port = 0; port < FPGA_PORT_MAX; port++)
+    {
+        if (rx_port_get(port, 0) != NULL)
+        {
+            printf("fpga rx multi-cast!\n");
+            exit(1);
+        }
+    }
+    DG_DBG_set_dbg_level(i);
 
     printf("fpga test passed\n");
 

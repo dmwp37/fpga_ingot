@@ -13,7 +13,7 @@ OBJ_DIR       := obj
 INC_DIRS      := -I../../hdr -I../
 
 CFLAGS        := $(INC_DIRS) -g -Wall -Werror -msse2 -D_GNU_SOURCE
-LD_FLAGS      := -L.. -lfpga_net -lgdb_print -lpthread -lrt
+LD_FLAGS      := -L.. -lfpga_net -lpthread -lrt
 
 # target define
 TARGET        := fpga_test
