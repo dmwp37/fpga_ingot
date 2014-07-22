@@ -98,6 +98,7 @@ extern "C" {
 
 #include "rte_common.h"
 #include "rte_atomic.h"
+#include <semaphore.h>
 
     
 enum rte_ring_queue_behavior {
@@ -132,6 +133,8 @@ struct rte_ring {
 		volatile uint32_t head;  /**< Consumer head. */
 		volatile uint32_t tail;  /**< Consumer tail. */
 	} cons;
+        
+        sem_t sem;
 
 	void * ring[0] __rte_cache_aligned; /**< Memory space of ring starts here.
 	                                     * not volatile so need to be careful
@@ -298,6 +301,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 
 	/* move prod.head atomically */
 	do {
+            sem_wait(&r->sem);
 		/* Reset n to the initial burst count */
 		n = max;
 
@@ -312,11 +316,13 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 		/* check that we have enough room in ring */
 		if (unlikely(n > free_entries)) {
 			if (behavior == RTE_RING_QUEUE_FIXED) {
+                            sem_post(&r->sem);
 				return -ENOBUFS;
 			}
 			else {
 				/* No free entry available */
 				if (unlikely(free_entries == 0)) {
+                                    sem_post(&r->sem);
 					return 0;
 				}
 
@@ -327,6 +333,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 		prod_next = prod_head + n;
 		success = rte_atomic32_cmpset(&r->prod.head, prod_head,
 					      prod_next);
+                sem_post(&r->sem);
 	} while (unlikely(success == 0));
 
 	/* write entries in ring */
@@ -468,6 +475,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	/* move cons.head atomically */
 	do {
+                sem_wait(&r->sem);
 		/* Restore n as it may change every loop */
 		n = max;
 
@@ -482,10 +490,12 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 		/* Set the actual entries for dequeue */
 		if (n > entries) {
 			if (behavior == RTE_RING_QUEUE_FIXED) {
+                            sem_post(&r->sem);
 				return -ENOENT;
 			}
 			else {
 				if (unlikely(entries == 0)){
+                                    sem_post(&r->sem);
 					return 0;
 				}
 
@@ -496,6 +506,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 		cons_next = cons_head + n;
 		success = rte_atomic32_cmpset(&r->cons.head, cons_head,
 					      cons_next);
+                sem_post(&r->sem);
 	} while (unlikely(success == 0));
 
 	/* copy in table */

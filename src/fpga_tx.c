@@ -12,6 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <semaphore.h>
 #include "dg_dbg.h"
 #include "rte_common.h"
 #include "mem_map.h"
@@ -53,6 +54,8 @@ static uint64_t tx_packet_num  = 0;
 static uint32_t tx_dropped_num = 0;
 /* static uint32_t tx_error_num = 0; */
 
+static sem_t tx_sem;
+
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
 ==================================================================================================*/
@@ -76,7 +79,7 @@ int fpga_tx_init()
         tx_global_queue = TX_QUEUE_FPGA_LOOP;
     }
 
-    return 0;
+    return sem_init(&tx_sem, 0, 1);
 }
 
 /*=============================================================================================*//**
@@ -115,7 +118,6 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     uint32_t          head;
     uint32_t          next;
     uint32_t          idx;
-    uint32_t          retry     = 0;
     tx_descp_entry_t* p_tx_desc = (tx_descp_entry_t*)((uint8_t*)global_mem->base + TX_DESCRIPTOR_OFFSET);
     uint64_t          reg       = 0;
     int               success;
@@ -130,6 +132,7 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 
     do
     {
+        sem_wait(&tx_sem);
         head = tx_head;
         next = head + 1;
         idx  = head & TX_RING_MASK;
@@ -137,17 +140,15 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
         /* check that we have tx entry available in ring */
         if (unlikely(p_tx_desc[idx].bufptr != NULL))
         {
-            if (retry > 10000000)
-            {
-                DG_DBG_ERROR("TX stuck while processing TX Descp #%d", idx);
-                tx_dropped_num++;
-                return -ENOBUFS;
-            }
-            retry++;
-            continue;
+            DG_DBG_ERROR("TX stuck while processing TX Descp #%d", idx);
+            tx_dropped_num++;
+            sem_post(&tx_sem);
+            return -ENOBUFS;
         }
+
         /* test and increase tx_head atomically */
         success = rte_atomic32_cmpset(&tx_head, head, next);
+        sem_post(&tx_sem);
     } while (unlikely(success == 0));
 
     /* prepare mbuf data to tx */

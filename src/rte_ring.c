@@ -109,6 +109,8 @@ int rte_ring_init(struct rte_ring* r, unsigned count)
     r->prod.mask      = r->cons.mask = count - 1;
     r->prod.head      = r->cons.head = 0;
     r->prod.tail      = r->cons.tail = 0;
+    
+    sem_init(&r->sem, 0, 1);
 
     return 0;
 }
