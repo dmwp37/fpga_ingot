@@ -133,7 +133,7 @@ struct rte_ring {
 		volatile uint32_t head;  /**< Consumer head. */
 		volatile uint32_t tail;  /**< Consumer tail. */
 	} cons;
-        
+
         sem_t sem;
 
 	void * ring[0] __rte_cache_aligned; /**< Memory space of ring starts here.
@@ -301,7 +301,6 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 
 	/* move prod.head atomically */
 	do {
-            sem_wait(&r->sem);
 		/* Reset n to the initial burst count */
 		n = max;
 
@@ -316,13 +315,11 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 		/* check that we have enough room in ring */
 		if (unlikely(n > free_entries)) {
 			if (behavior == RTE_RING_QUEUE_FIXED) {
-                            sem_post(&r->sem);
 				return -ENOBUFS;
 			}
 			else {
 				/* No free entry available */
 				if (unlikely(free_entries == 0)) {
-                                    sem_post(&r->sem);
 					return 0;
 				}
 
@@ -333,7 +330,6 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 		prod_next = prod_head + n;
 		success = rte_atomic32_cmpset(&r->prod.head, prod_head,
 					      prod_next);
-                sem_post(&r->sem);
 	} while (unlikely(success == 0));
 
 	/* write entries in ring */
@@ -436,6 +432,53 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 }
 
 /**
+ * Enqueue one object on a ring (multi-threads safe).
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @param obj
+ *   A pointer to the object to be added.
+ * @return
+ *   - 0: Success; objects enqueued.
+ *   - -ENOBUFS: Not enough room in the ring to enqueue; no object is enqueued.
+ */
+static inline int __attribute__((always_inline))
+rte_ring_mp_enqueue_s(struct rte_ring *r, void *obj)
+{
+	uint32_t prod_head, cons_tail;
+	uint32_t prod_next, free_entries;
+	uint32_t mask = r->prod.mask;
+
+        sem_wait(&r->sem);
+	prod_head = r->prod.head;
+	cons_tail = r->cons.tail;
+	/* The subtraction is done between two unsigned 32bits value
+	 * (the result is always modulo 32 bits even if we have
+	 * prod_head > cons_tail). So 'free_entries' is always between 0
+	 * and size(ring)-1. */
+	free_entries = mask + cons_tail - prod_head;
+
+        /* check that we have enough room in ring */
+        if (unlikely(free_entries == 0))
+        {
+            sem_post(&r->sem);
+            return -ENOBUFS;
+	}
+
+	prod_next = prod_head + 1;
+	r->prod.head = prod_next;
+
+	/* write entries in ring */
+        r->ring[prod_head & mask] = obj;
+	rte_compiler_barrier();
+
+	r->prod.tail = prod_next;
+        
+        sem_post(&r->sem);
+	return 0;
+}
+
+/**
  * @internal Dequeue several objects from a ring (multi-consumers safe). When
  * the request objects are more than the available objects, only dequeue the
  * actual number of objects
@@ -475,7 +518,6 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	/* move cons.head atomically */
 	do {
-                sem_wait(&r->sem);
 		/* Restore n as it may change every loop */
 		n = max;
 
@@ -490,12 +532,10 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 		/* Set the actual entries for dequeue */
 		if (n > entries) {
 			if (behavior == RTE_RING_QUEUE_FIXED) {
-                            sem_post(&r->sem);
 				return -ENOENT;
 			}
 			else {
 				if (unlikely(entries == 0)){
-                                    sem_post(&r->sem);
 					return 0;
 				}
 
@@ -506,7 +546,6 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 		cons_next = cons_head + n;
 		success = rte_atomic32_cmpset(&r->cons.head, cons_head,
 					      cons_next);
-                sem_post(&r->sem);
 	} while (unlikely(success == 0));
 
 	/* copy in table */
@@ -587,6 +626,52 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	r->cons.tail = cons_next;
 	return behavior == RTE_RING_QUEUE_FIXED ? 0 : n;
+}
+
+/**
+ * Dequeue one object from a ring (multi-thread safe).
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @param obj_p
+ *   A pointer to a void * pointer (object) that will be filled.
+ * @return
+ *   - 0: Success; objects dequeued.
+ *   - -ENOENT: Not enough entries in the ring to dequeue; no object is
+ *     dequeued.
+ */
+static inline int __attribute__((always_inline))
+rte_ring_mc_dequeue_s(struct rte_ring *r, void **obj_p)
+{
+	uint32_t cons_head, prod_tail;
+	uint32_t cons_next, entries;
+	uint32_t mask = r->prod.mask;
+
+        sem_wait(&r->sem);
+	cons_head = r->cons.head;
+	prod_tail = r->prod.tail;
+	/* The subtraction is done between two unsigned 32bits value
+	 * (the result is always modulo 32 bits even if we have
+	 * cons_head > prod_tail). So 'entries' is always between 0
+	 * and size(ring)-1. */
+	entries = prod_tail - cons_head;
+
+        if (unlikely(entries == 0))
+        {
+            sem_post(&r->sem);
+            return -ENOENT;
+        }
+
+	cons_next = cons_head + 1;
+	r->cons.head = cons_next;
+
+	/* copy in table */
+        *obj_p = r->ring[cons_head & mask];
+	rte_compiler_barrier();
+
+	r->cons.tail = cons_next;
+        sem_post(&r->sem);
+	return 0;
 }
 
 /**

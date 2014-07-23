@@ -150,7 +150,7 @@ void* rx_mbuf_get()
 *//*==============================================================================================*/
 void rx_mbuf_put(void* mbuf)
 {
-    if (unlikely(rte_ring_mp_enqueue(rx_mbuf_ring, mbuf) != 0))
+    if (unlikely(rte_ring_mp_enqueue_s(rx_mbuf_ring, mbuf) != 0))
     {
         DG_DBG_ERROR("%s(): can't enqueue mbuf to the mbuf pool!", __func__);
     }
@@ -191,7 +191,7 @@ void* rx_port_get(int port, int time)
 
     if (wait_sem(&rx_port_ring[port].sem, time) == 0)
     {
-        if (unlikely(rte_ring_mc_dequeue(rx_port_ring[port].ring, &mbuf) != 0))
+        if (unlikely(rte_ring_mc_dequeue_s(rx_port_ring[port].ring, &mbuf) != 0))
         {
             DG_DBG_ERROR("%s(): no mbuf available in port[%d]", __func__, port);
             DG_DBG_ERROR("%s(): sem sync wrong!", __func__);

@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <semaphore.h>
+#include <sched.h>
 #include "dg_dbg.h"
 #include "rte_common.h"
 #include "mem_map.h"
@@ -113,14 +114,13 @@ int fpga_net_config(tx_queue_t queue)
 int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 {
     static volatile uint32_t tx_head = 0;
-    static volatile uint32_t tx_tail = 0;
+//    static volatile uint32_t tx_tail = 0;
 
     uint32_t          head;
-    uint32_t          next;
+//    uint32_t          next;
     uint32_t          idx;
     tx_descp_entry_t* p_tx_desc = (tx_descp_entry_t*)((uint8_t*)global_mem->base + TX_DESCRIPTOR_OFFSET);
     uint64_t          reg       = 0;
-    int               success;
 
     if (port >= FPGA_PORT_MAX)
     {
@@ -129,27 +129,24 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     }
 
     tx_packet_num++;
+    
+    sem_wait(&tx_sem);
+    head = tx_head;
+//    next = head + 1;
+    idx = head & TX_RING_MASK;
 
-    do
+    /* check that we have tx entry available in ring */
+    if (unlikely(p_tx_desc[idx].bufptr != NULL))
     {
-        sem_wait(&tx_sem);
-        head = tx_head;
-        next = head + 1;
-        idx  = head & TX_RING_MASK;
-
-        /* check that we have tx entry available in ring */
-        if (unlikely(p_tx_desc[idx].bufptr != NULL))
-        {
-            DG_DBG_ERROR("TX stuck while processing TX Descp #%d", idx);
-            tx_dropped_num++;
-            sem_post(&tx_sem);
-            return -ENOBUFS;
-        }
-
-        /* test and increase tx_head atomically */
-        success = rte_atomic32_cmpset(&tx_head, head, next);
+        DG_DBG_ERROR("TX stuck while processing TX Descp #%d", idx);
+        tx_dropped_num++;
         sem_post(&tx_sem);
-    } while (unlikely(success == 0));
+        return -ENOBUFS;
+    }
+
+    /* test and increase tx_head atomically */
+    tx_head++;
+//    sem_post(&tx_sem);
 
     /* prepare mbuf data to tx */
     packet_buf_t* packet = (packet_buf_t*)((uint8_t*)global_mem->base + TX_MBUF_OFFSET + MBUF_SIZE * idx);
@@ -169,16 +166,16 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
      * If there are other enqueues in progress that preceded us,
      * we need to wait for them to complete
      */
-    while (unlikely(tx_tail != head))
-    {
-        rte_pause();
-    }
+//    while (unlikely(tx_tail != head))
+//    {
+//        sched_yield();
+//    }
 
     /* write to the fpga hardware */
     ingot_reg->tx_packet = reg;
 
-    tx_tail = next;
-
+//    tx_tail = next;
+    sem_post(&tx_sem);
     return 0;
 }
 
