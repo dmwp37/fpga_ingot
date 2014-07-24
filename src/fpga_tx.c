@@ -12,8 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <semaphore.h>
-#include <sched.h>
+#include <pthread.h>
 #include "dg_dbg.h"
 #include "rte_common.h"
 #include "mem_map.h"
@@ -55,7 +54,7 @@ static uint64_t tx_packet_num  = 0;
 static uint32_t tx_dropped_num = 0;
 /* static uint32_t tx_error_num = 0; */
 
-static sem_t tx_sem;
+static pthread_mutex_t tx_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
@@ -80,7 +79,7 @@ int fpga_tx_init()
         tx_global_queue = TX_QUEUE_FPGA_LOOP;
     }
 
-    return sem_init(&tx_sem, 0, 1);
+    return 0;
 }
 
 /*=============================================================================================*//**
@@ -114,10 +113,7 @@ int fpga_net_config(tx_queue_t queue)
 int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 {
     static volatile uint32_t tx_head = 0;
-//    static volatile uint32_t tx_tail = 0;
 
-    uint32_t          head;
-//    uint32_t          next;
     uint32_t          idx;
     tx_descp_entry_t* p_tx_desc = (tx_descp_entry_t*)((uint8_t*)global_mem->base + TX_DESCRIPTOR_OFFSET);
     uint64_t          reg       = 0;
@@ -129,24 +125,18 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     }
 
     tx_packet_num++;
-    
-    sem_wait(&tx_sem);
-    head = tx_head;
-//    next = head + 1;
-    idx = head & TX_RING_MASK;
+
+    pthread_mutex_lock(&tx_mutex);
+    idx = tx_head & TX_RING_MASK;
 
     /* check that we have tx entry available in ring */
     if (unlikely(p_tx_desc[idx].bufptr != NULL))
     {
         DG_DBG_ERROR("TX stuck while processing TX Descp #%d", idx);
         tx_dropped_num++;
-        sem_post(&tx_sem);
+        pthread_mutex_unlock(&tx_mutex);
         return -ENOBUFS;
     }
-
-    /* test and increase tx_head atomically */
-    tx_head++;
-//    sem_post(&tx_sem);
 
     /* prepare mbuf data to tx */
     packet_buf_t* packet = (packet_buf_t*)((uint8_t*)global_mem->base + TX_MBUF_OFFSET + MBUF_SIZE * idx);
@@ -162,20 +152,12 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 
     rte_compiler_barrier();
 
-    /*
-     * If there are other enqueues in progress that preceded us,
-     * we need to wait for them to complete
-     */
-//    while (unlikely(tx_tail != head))
-//    {
-//        sched_yield();
-//    }
-
     /* write to the fpga hardware */
     ingot_reg->tx_packet = reg;
 
-//    tx_tail = next;
-    sem_post(&tx_sem);
+    tx_head++;
+    pthread_mutex_unlock(&tx_mutex);
+
     return 0;
 }
 

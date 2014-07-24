@@ -98,7 +98,7 @@ extern "C" {
 
 #include "rte_common.h"
 #include "rte_atomic.h"
-#include <semaphore.h>
+#include <pthread.h>
 
     
 enum rte_ring_queue_behavior {
@@ -134,7 +134,7 @@ struct rte_ring {
 		volatile uint32_t tail;  /**< Consumer tail. */
 	} cons;
 
-        sem_t sem;
+        pthread_mutex_t mutex;
 
 	void * ring[0] __rte_cache_aligned; /**< Memory space of ring starts here.
 	                                     * not volatile so need to be careful
@@ -445,37 +445,36 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 static inline int __attribute__((always_inline))
 rte_ring_mp_enqueue_s(struct rte_ring *r, void *obj)
 {
-	uint32_t prod_head, cons_tail;
-	uint32_t prod_next, free_entries;
-	uint32_t mask = r->prod.mask;
+    uint32_t prod_head, cons_tail;
+    uint32_t prod_next, free_entries;
+    uint32_t mask = r->prod.mask;
 
-        sem_wait(&r->sem);
-	prod_head = r->prod.head;
-	cons_tail = r->cons.tail;
-	/* The subtraction is done between two unsigned 32bits value
-	 * (the result is always modulo 32 bits even if we have
-	 * prod_head > cons_tail). So 'free_entries' is always between 0
-	 * and size(ring)-1. */
-	free_entries = mask + cons_tail - prod_head;
+    pthread_mutex_lock(&r->mutex);
+    prod_head = r->prod.head;
+    cons_tail = r->cons.tail;
+    /* The subtraction is done between two unsigned 32bits value
+     * (the result is always modulo 32 bits even if we have
+     * prod_head > cons_tail). So 'free_entries' is always between 0
+     * and size(ring)-1. */
+    free_entries = mask + cons_tail - prod_head;
 
-        /* check that we have enough room in ring */
-        if (unlikely(free_entries == 0))
-        {
-            sem_post(&r->sem);
-            return -ENOBUFS;
-	}
+    /* check that we have enough room in ring */
+    if (unlikely(free_entries == 0)) {
+        pthread_mutex_unlock(&r->mutex);
+        return -ENOBUFS;
+    }
 
-	prod_next = prod_head + 1;
-	r->prod.head = prod_next;
+    prod_next = prod_head + 1;
+    r->prod.head = prod_next;
 
-	/* write entries in ring */
-        r->ring[prod_head & mask] = obj;
-	rte_compiler_barrier();
+    /* write entries in ring */
+    r->ring[prod_head & mask] = obj;
+    rte_compiler_barrier();
 
-	r->prod.tail = prod_next;
-        
-        sem_post(&r->sem);
-	return 0;
+    r->prod.tail = prod_next;
+
+    pthread_mutex_unlock(&r->mutex);
+    return 0;
 }
 
 /**
@@ -643,35 +642,34 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 static inline int __attribute__((always_inline))
 rte_ring_mc_dequeue_s(struct rte_ring *r, void **obj_p)
 {
-	uint32_t cons_head, prod_tail;
-	uint32_t cons_next, entries;
-	uint32_t mask = r->prod.mask;
+    uint32_t cons_head, prod_tail;
+    uint32_t cons_next, entries;
+    uint32_t mask = r->prod.mask;
 
-        sem_wait(&r->sem);
-	cons_head = r->cons.head;
-	prod_tail = r->prod.tail;
-	/* The subtraction is done between two unsigned 32bits value
-	 * (the result is always modulo 32 bits even if we have
-	 * cons_head > prod_tail). So 'entries' is always between 0
-	 * and size(ring)-1. */
-	entries = prod_tail - cons_head;
+    pthread_mutex_lock(&r->mutex);
+    cons_head = r->cons.head;
+    prod_tail = r->prod.tail;
+    /* The subtraction is done between two unsigned 32bits value
+     * (the result is always modulo 32 bits even if we have
+     * cons_head > prod_tail). So 'entries' is always between 0
+     * and size(ring)-1. */
+    entries = prod_tail - cons_head;
 
-        if (unlikely(entries == 0))
-        {
-            sem_post(&r->sem);
-            return -ENOENT;
-        }
+    if (unlikely(entries == 0)) {
+        pthread_mutex_unlock(&r->mutex);
+        return -ENOENT;
+    }
 
-	cons_next = cons_head + 1;
-	r->cons.head = cons_next;
+    cons_next = cons_head + 1;
+    r->cons.head = cons_next;
 
-	/* copy in table */
-        *obj_p = r->ring[cons_head & mask];
-	rte_compiler_barrier();
+    /* copy in table */
+    *obj_p = r->ring[cons_head & mask];
+    rte_compiler_barrier();
 
-	r->cons.tail = cons_next;
-        sem_post(&r->sem);
-	return 0;
+    r->cons.tail = cons_next;
+    pthread_mutex_unlock(&r->mutex);
+    return 0;
 }
 
 /**

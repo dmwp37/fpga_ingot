@@ -110,7 +110,7 @@ int rte_ring_init(struct rte_ring* r, unsigned count)
     r->prod.head      = r->cons.head = 0;
     r->prod.tail      = r->cons.tail = 0;
     
-    sem_init(&r->sem, 0, 1);
+    pthread_mutex_init(&r->mutex, NULL);
 
     return 0;
 }
