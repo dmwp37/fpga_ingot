@@ -10,9 +10,9 @@
                                            INCLUDE FILES
 ==================================================================================================*/
 #include <stdlib.h>
-#include <semaphore.h>
 #include <errno.h>
-#include <time.h>
+
+#include "dg_sem.h"
 #include "dg_dbg.h"
 #include "mem_map.h"
 #include "rx_mbuf.h"
@@ -31,13 +31,12 @@
 typedef struct
 {
     struct rte_ring* ring;
-    sem_t            sem;
+    dg_sem_t         sem;
 } rx_port_ring_t;
 
 /*==================================================================================================
                                      LOCAL FUNCTION PROTOTYPES
 ==================================================================================================*/
-static int wait_sem(sem_t* sem, int time_out);
 
 /*==================================================================================================
                                          GLOBAL VARIABLES
@@ -62,8 +61,8 @@ static rx_port_ring_t rx_port_ring[RX_PORT_NUM];
 *//*==============================================================================================*/
 int rx_mbuf_init()
 {
-    int   i;
-    int   ret = 0;
+    int      i;
+    int      ret = 0;
     uint8_t* p_mbuf;
 
     rx_mbuf_ring = (struct rte_ring*)((uint8_t*)global_mem->base + RX_MBUF_RING_OFFSET);
@@ -92,11 +91,7 @@ int rx_mbuf_init()
     for (i = 0; i < RX_PORT_NUM; i++)
     {
         /* init the semaphore for blocking read */
-        if (sem_init(&rx_port_ring[i].sem, 0, 0) != 0)
-        {
-            ret = -1;
-            DG_DBG_ERROR("Failed to init semphore for rx port, errno=%d(%m)", errno);
-        }
+        dg_sem_init(&rx_port_ring[i].sem, 0);
 
         rx_port_ring[i].ring = (struct rte_ring*)port_ring;
         rte_ring_init((struct rte_ring*)port_ring, RX_PORT_MBUF_COUNT);
@@ -112,13 +107,6 @@ int rx_mbuf_init()
 *//*==============================================================================================*/
 void rx_mbuf_exit()
 {
-    int i;
-
-    for (i = 0; i < RX_PORT_NUM; i++)
-    {
-        sem_destroy(&rx_port_ring[i].sem);
-    }
-
     hp_free(rx_mbuf_mem);
     rx_mbuf_mem = NULL;
 }
@@ -172,7 +160,7 @@ int rx_port_put(int port, void* mbuf)
         return -1;
     }
 
-    sem_post(&rx_port_ring[port].sem);
+    dg_sem_post(&rx_port_ring[port].sem);
 
     return 0;
 }
@@ -189,7 +177,7 @@ void* rx_port_get(int port, int time)
 {
     void* mbuf = NULL;
 
-    if (wait_sem(&rx_port_ring[port].sem, time) == 0)
+    if (dg_sem_wait(&rx_port_ring[port].sem, time) == 0)
     {
         if (unlikely(rte_ring_mc_dequeue_s(rx_port_ring[port].ring, &mbuf) != 0))
         {
@@ -209,65 +197,4 @@ void* rx_port_get(int port, int time)
 /*==================================================================================================
                                           LOCAL FUNCTIONS
 ==================================================================================================*/
-
-/*=============================================================================================*//**
-@brief Wait the semaphore for specified time
-
-@param[in] sem     - the pointer of semaphore
-@param[in] timeout - timeout value to wait in ms
-
-@return 0 for success
-
-@note
- - if timeout is 0, no wait
- - -1, wait for ever
-*//*==============================================================================================*/
-int wait_sem(sem_t* sem, int time_out)
-{
-    int status = 0;
-
-    if (time_out < 0)
-    {
-        status = sem_wait(sem);
-    }
-    else if (time_out == 0)
-    {
-        status = sem_trywait(sem);
-    }
-    else
-    {
-        struct timespec timeout_time;
-
-        if (clock_gettime(CLOCK_REALTIME, &timeout_time) != 0)
-        {
-            DG_DBG_ERROR("Failed to call clock_gettime(), errno=%d(%m)", errno);
-            return -1;
-        }
-        else
-        {
-            /* Add the timeout time to the time of day to get absolute timeout time */
-            timeout_time.tv_sec  += time_out / 1000;
-            timeout_time.tv_nsec += (time_out % 1000) * 1000000;
-            timeout_time.tv_sec  += timeout_time.tv_nsec / 1000000000;
-            timeout_time.tv_nsec %= 1000000000;
-        }
-        status = sem_timedwait(sem, &timeout_time);
-    }
-
-    if (status < 0)
-    {
-        if (errno == ETIMEDOUT)
-        {
-            /* If a time out occurred, return a timeout response */
-            DG_DBG_ERROR("Waiting for rx data time out, time_out=%d ms", time_out);
-        }
-        else
-        {
-            /* If an error other than time out occurred, send an error response */
-            DG_DBG_ERROR("Waiting for semaphore failed, errno=%d(%m)", errno);
-        }
-    }
-
-    return status;
-}
 
