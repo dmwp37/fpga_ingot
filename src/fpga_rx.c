@@ -15,6 +15,10 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+#include <assert.h>
 #include "dg_dbg.h"
 #include "mem_map.h"
 #include "rx_mbuf.h"
@@ -69,7 +73,12 @@ static int       fpga_rx_thread_run = 0;
 *//*==============================================================================================*/
 int fpga_rx_init()
 {
-    phys_addr_t phys_base = global_mem->phys_addr;
+    phys_addr_t        phys_base = global_mem->phys_addr;
+    pthread_attr_t     attr;
+    struct sched_param param =
+    {
+        .sched_priority = 90
+    };
 
     ingot_reg->rx_desc_base = phys_base + RX_DESCRIPTOR_OFFSET;
     ingot_reg->rx_buf_base  = phys_base + RX_MBUF_OFFSET;
@@ -77,6 +86,10 @@ int fpga_rx_init()
     memset((uint8_t*)global_mem->base + RX_DESCRIPTOR_OFFSET, 0, RX_DESCRIPTOR_SIZE);
 
     fpga_rx_thread_run = 1;
+    assert(pthread_attr_init(&attr) == 0);
+    assert(pthread_attr_setschedpolicy(&attr, SCHED_FIFO) == 0);
+    assert(pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) == 0);
+    assert(pthread_attr_setschedparam(&attr, &param) == 0);
     if (pthread_create(&fpga_rx_thread, NULL, fpga_rx_thread_func, NULL) != 0)
     {
         DG_DBG_ERROR("could not create fpga rx thread!");
@@ -143,7 +156,8 @@ int fpga_net_rx(fpga_net_port_t port, void* buf, size_t len)
 ==================================================================================================*/
 int map_bcm_port(int bcm_port)
 {
-#define PORT_MAPPER(x) case BCM_ ## x: return x
+#define PORT_MAPPER(x) case BCM_ ## x: \
+    return x
     switch (bcm_port)
     {
         PORT_MAPPER(GE_0);
