@@ -77,7 +77,7 @@ int fpga_rx_init()
     pthread_attr_t     attr;
     struct sched_param param =
     {
-        .sched_priority = 90
+        .sched_priority = sched_get_priority_min(SCHED_FIFO),
     };
 
     ingot_reg->rx_desc_base = phys_base + RX_DESCRIPTOR_OFFSET;
@@ -90,7 +90,7 @@ int fpga_rx_init()
     assert(pthread_attr_setschedpolicy(&attr, SCHED_FIFO) == 0);
     assert(pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) == 0);
     assert(pthread_attr_setschedparam(&attr, &param) == 0);
-    if (pthread_create(&fpga_rx_thread, NULL, fpga_rx_thread_func, NULL) != 0)
+    if (pthread_create(&fpga_rx_thread, &attr, fpga_rx_thread_func, NULL) != 0)
     {
         DG_DBG_ERROR("could not create fpga rx thread!");
         fpga_rx_thread_run = 0;
@@ -290,7 +290,7 @@ void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
     packet_buf_t* mbuf;
     int           port;
 
-    while (fpga_rx_thread_run)
+    while (likely(fpga_rx_thread_run != 0))
     {
         do
         {
@@ -306,6 +306,7 @@ void* fpga_rx_thread_func(void* arg __attribute__((__unused__)))
         {
             if (unlikely(fpga_rx_thread_run == 0))
             {
+                rx_mbuf_put(mbuf);
                 return NULL;
             }
 
