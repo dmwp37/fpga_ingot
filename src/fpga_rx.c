@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
+#include <time.h>
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
@@ -212,6 +213,12 @@ int fpga_rx_raw(packet_buf_t* rx_mbuf)
     if (len == 0)
     {
         /* HW processing the descriptor or No Packets Received */
+        struct timespec tim;
+        tim.tv_sec  = 0;
+        tim.tv_nsec = 1;
+
+        nanosleep(&tim, NULL);
+
         return -EAGAIN;
     }
 
