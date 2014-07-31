@@ -80,8 +80,7 @@ static inline int dg_sem_wait(dg_sem_t* sem, uint32_t time)
         if (x == 0)
         {
             /* use the wait method */
-            rte_pause();
-            continue;
+            break;
         }
 
         if (likely(rte_atomic32_cmpset((volatile uint32_t*)&sem->cnt, x, x - 1)))
