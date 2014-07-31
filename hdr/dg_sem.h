@@ -13,8 +13,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define USE_PTHREAD
+/* pthread would cause the wait thread slowly recover and cause time out */
+#undef USE_PTHREAD
 
 #include <sys/time.h>
 #ifdef USE_PTHREAD
@@ -70,52 +70,37 @@ static inline int get_current_time()
 static inline int dg_sem_wait(dg_sem_t* sem, uint32_t time)
 {
     uint32_t x;
+    int      success = 0;
 
 #ifdef USE_PTHREAD
     struct timespec time_out;
+    struct timeval  now;
 
-    while (1)
-    {
-        x = sem->cnt;
-        if (x == 0)
-        {
-            /* use the wait method */
-            break;
-        }
-
-        if (likely(rte_atomic32_cmpset((volatile uint32_t*)&sem->cnt, x, x - 1)))
-        {
-            return 0;
-        }
-    }
-
-    pthread_mutex_lock(&sem->mutex);
-    clock_gettime(CLOCK_REALTIME, &time_out);
-    time_out.tv_sec += time / 1000;
-    time_out.tv_nsec = (time % 1000) * 1000000;
+    gettimeofday(&now, NULL);
+    time_out.tv_sec  = now.tv_sec;
+    time_out.tv_nsec = (now.tv_usec + time * 1000) * 1000;
     time_out.tv_sec += time_out.tv_nsec / 1000000000;
     time_out.tv_nsec = time_out.tv_nsec % 1000000000;
-    while (sem->cnt == 0)
-    {
-        if (pthread_cond_timedwait(&sem->cond, &sem->mutex, &time_out) == ETIMEDOUT)
-        {
-            /* timeout, do something */
-            pthread_mutex_unlock(&sem->mutex);
-            DG_DBG_ERROR("dg_sem_wait timeout, time=%d ms", time);
-            return -1;
-        }
-    }
-    sem->cnt -= 1;
-    pthread_mutex_unlock(&sem->mutex);
 #else
-    int success  = 0;
     int time_out = time + get_current_time();
+#endif
 
     while (success == 0)
     {
         x = sem->cnt;
         if (x == 0)
         {
+#ifdef USE_PTHREAD
+            pthread_mutex_lock(&sem->mutex);
+            if (pthread_cond_timedwait(&sem->cond, &sem->mutex, &time_out) == ETIMEDOUT)
+            {
+                /* timeout, do something */
+                pthread_mutex_unlock(&sem->mutex);
+                DG_DBG_ERROR("dg_sem_wait timeout, time=%d ms", time);
+                return -1;
+            }
+            pthread_mutex_unlock(&sem->mutex);
+#else
             if (unlikely(get_current_time() >= time_out))
             {
                 DG_DBG_ERROR("dg_sem_wait timeout, time=%d ms", time);
@@ -123,11 +108,11 @@ static inline int dg_sem_wait(dg_sem_t* sem, uint32_t time)
             }
             /* rte_pause(); */
             /* pthread_yield(); */
+#endif
             continue;
         }
         success = rte_atomic32_cmpset((volatile uint32_t*)&sem->cnt, x, x - 1);
     }
-#endif
     return 0;
 }
 
@@ -136,14 +121,9 @@ static inline int dg_sem_wait(dg_sem_t* sem, uint32_t time)
  */
 static inline void dg_sem_post(dg_sem_t* sem)
 {
+    rte_atomic32_inc((rte_atomic32_t*)(intptr_t)&sem->cnt);
 #ifdef USE_PTHREAD
-    pthread_mutex_lock(&sem->mutex);
     pthread_cond_signal(&sem->cond);
-    /* sem->cnt += 1; */
-    rte_atomic32_inc((rte_atomic32_t*)(intptr_t)&sem->cnt);
-    pthread_mutex_unlock(&sem->mutex);
-#else
-    rte_atomic32_inc((rte_atomic32_t*)(intptr_t)&sem->cnt);
 #endif
 }
 
