@@ -54,11 +54,7 @@ static inline int get_current_time()
 {
     struct timeval timeofday;
 
-    if (gettimeofday(&timeofday, NULL) != 0)
-    {
-        DG_DBG_ERROR("Failed to get time of day, errno=%d(%m)", errno);
-        return -1;
-    }
+    gettimeofday(&timeofday, NULL);
 
     return timeofday.tv_sec * 1000 + timeofday.tv_usec / 1000;
 }
@@ -70,34 +66,33 @@ static inline int get_current_time()
 static inline int dg_sem_wait(dg_sem_t* sem, uint32_t time)
 {
     uint32_t x;
-    int      success = 0;
 
 #ifdef USE_PTHREAD
     struct timespec time_out;
-    struct timeval  now;
-
-    gettimeofday(&now, NULL);
-    time_out.tv_sec  = now.tv_sec;
-    time_out.tv_nsec = (now.tv_usec + time * 1000) * 1000;
-    time_out.tv_sec += time_out.tv_nsec / 1000000000;
-    time_out.tv_nsec = time_out.tv_nsec % 1000000000;
+    clock_gettime(CLOCK_REALTIME, &time_out);
+    time_out.tv_nsec += time * 1000000;
+    time_out.tv_sec  += time_out.tv_nsec / 1000000000;
+    time_out.tv_nsec  = time_out.tv_nsec % 1000000000;
 #else
     int time_out = time + get_current_time();
 #endif
 
-    while (success == 0)
+    while (1)
     {
         x = sem->cnt;
         if (x == 0)
         {
 #ifdef USE_PTHREAD
             pthread_mutex_lock(&sem->mutex);
-            if (pthread_cond_timedwait(&sem->cond, &sem->mutex, &time_out) == ETIMEDOUT)
+            if (sem->cnt == 0)
             {
-                /* timeout, do something */
-                pthread_mutex_unlock(&sem->mutex);
-                DG_DBG_ERROR("dg_sem_wait timeout, time=%d ms", time);
-                return -1;
+                if (pthread_cond_timedwait(&sem->cond, &sem->mutex, &time_out) == ETIMEDOUT)
+                {
+                    /* timeout, do something */
+                    pthread_mutex_unlock(&sem->mutex);
+                    DG_DBG_ERROR("dg_sem_wait timeout, time=%d ms", time);
+                    return -1;
+                }
             }
             pthread_mutex_unlock(&sem->mutex);
 #else
@@ -111,7 +106,11 @@ static inline int dg_sem_wait(dg_sem_t* sem, uint32_t time)
 #endif
             continue;
         }
-        success = rte_atomic32_cmpset((volatile uint32_t*)&sem->cnt, x, x - 1);
+
+        if (likely(rte_atomic32_cmpset((volatile uint32_t*)&sem->cnt, x, x - 1)))
+        {
+            return 0;
+        }
     }
     return 0;
 }
@@ -121,9 +120,13 @@ static inline int dg_sem_wait(dg_sem_t* sem, uint32_t time)
  */
 static inline void dg_sem_post(dg_sem_t* sem)
 {
-    rte_atomic32_inc((rte_atomic32_t*)(intptr_t)&sem->cnt);
 #ifdef USE_PTHREAD
+    pthread_mutex_lock(&sem->mutex);
+    rte_atomic32_inc((rte_atomic32_t*)(intptr_t)&sem->cnt);
     pthread_cond_signal(&sem->cond);
+    pthread_mutex_unlock(&sem->mutex);
+#else
+    rte_atomic32_inc((rte_atomic32_t*)(intptr_t)&sem->cnt);
 #endif
 }
 
