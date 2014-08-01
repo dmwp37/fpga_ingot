@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
+#include <time.h>
 #include "dg_dbg.h"
 #include "rte_common.h"
 #include "mem_map.h"
@@ -114,9 +115,11 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
 {
     static volatile uint32_t tx_head = 0;
 
-    uint32_t          idx;
     tx_descp_entry_t* p_tx_desc = (tx_descp_entry_t*)((uint8_t*)global_mem->base + TX_DESCRIPTOR_OFFSET);
-    uint64_t          reg       = 0;
+
+    uint32_t idx;
+    uint64_t reg   = 0;
+    int      retry = 0;
 
     if (port >= FPGA_PORT_MAX)
     {
@@ -130,12 +133,20 @@ int fpga_net_tx(fpga_net_port_t port, const void* buf, size_t len)
     idx = tx_head & TX_RING_MASK;
 
     /* check that we have tx entry available in ring */
-    if (unlikely(p_tx_desc[idx].bufptr != NULL))
+    while (unlikely(p_tx_desc[idx].bufptr != NULL))
     {
-        DG_DBG_ERROR("TX stuck while processing TX Descp #%d", idx);
-        tx_dropped_num++;
-        pthread_mutex_unlock(&tx_mutex);
-        return -ENOBUFS;
+        struct timespec now;
+        if (retry > 1000)
+        {
+            DG_DBG_ERROR("TX stuck while processing TX Descp #%d", idx);
+            tx_dropped_num++;
+            pthread_mutex_unlock(&tx_mutex);
+            return -ENOBUFS;
+        }
+        /* use system call to simulate delay */
+        clock_gettime(CLOCK_REALTIME, &now);
+        (void)now;
+        retry++;
     }
 
     /* prepare mbuf data to tx */
