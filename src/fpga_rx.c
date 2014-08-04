@@ -61,7 +61,8 @@ static uint32_t rx_error_num      = 0;
 static volatile uint32_t tx_head = 0;
 
 static pthread_t fpga_rx_thread;
-static int       fpga_rx_thread_run = 0;
+
+static volatile int fpga_rx_thread_run = 0;
 
 /*==================================================================================================
                                          GLOBAL FUNCTIONS
@@ -213,9 +214,11 @@ int fpga_rx_raw(packet_buf_t* rx_mbuf)
     if (len == 0)
     {
         /* HW processing the descriptor or No Packets Received */
-        struct timespec tim;
-        tim.tv_sec  = 0;
-        tim.tv_nsec = 1;
+        struct timespec tim =
+        {
+            .tv_sec  = 0,
+            .tv_nsec = 1
+        };
 
         nanosleep(&tim, NULL);
 
