@@ -16,7 +16,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := libfpga_net
 
-LOCAL_CFLAGS := $(DG_FLAGS) -msse2
+LOCAL_CFLAGS := $(DG_FLAGS) -msse2 -O3
 
 FPGA_NET_EXPORT_INC := hdr
 
